@@ -33,7 +33,6 @@ Momentum is a web application designed to help users manage their time effective
 - **Web Speech API**: For speech-to-text and text-to-speech features.
 
 ---
-
 ## Getting Started
 
 ### Installation
@@ -87,3 +86,4 @@ momentum/
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
+
