@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '../store'
+import Export from '@/views/dashboard/Export.vue'
 
 // Lazy-loaded components
 const Welcome = () => import('../views/Welcome.vue')
@@ -29,7 +30,8 @@ const routes = [
   },
   {
     path: '/dashboard',
-    component: () => import('../views/Dashboard.vue'),
+    name: 'Dashboard',
+    component: Dashboard,
     meta: { requiresAuth: true },
     children: [
       {
@@ -46,6 +48,11 @@ const routes = [
         path: 'calendar',
         name: 'Calendar',
         component: () => import('../views/dashboard/Calendar.vue')
+      },
+      {
+        path: 'export',
+        name: 'Export',
+        component: Export
       },
       {
         path: 'notes',

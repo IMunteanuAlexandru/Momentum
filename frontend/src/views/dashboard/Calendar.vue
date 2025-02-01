@@ -16,8 +16,8 @@
         <div class="navigation-controls">
           <button @click="navigateCalendar('prev')" class="nav-btn">
             ←
-          </button>
-          <h2>{{ currentMonthYear }}</h2>
+        </button>
+        <h2>{{ currentMonthYear }}</h2>
           <button @click="navigateCalendar('next')" class="nav-btn">
             →
           </button>
@@ -26,7 +26,7 @@
           Adaugă eveniment
         </button>
       </div>
-
+      
     <!-- Calendar Grid -->
     <div class="calendar-view" :class="currentView">
       <!-- Month View -->
@@ -68,7 +68,7 @@
           </div>
         </div>
       </div>
-
+      
       <!-- Week View -->
       <div v-else-if="currentView === 'week'" class="week-view">
         <div class="time-grid">
@@ -217,7 +217,7 @@ export default {
   setup() {
     const store = useStore()
     const currentView = ref('month')
-    const currentDate = ref(new Date())
+const currentDate = ref(new Date())
     const showAddEvent = ref(false)
     const editingEvent = ref(null)
     
@@ -243,7 +243,7 @@ export default {
     })
 
     // Computed properties for calendar data
-    const currentMonthYear = computed(() => {
+const currentMonthYear = computed(() => {
       return currentDate.value.toLocaleDateString('ro-RO', { 
         month: 'long', 
         year: 'numeric' 
@@ -254,11 +254,11 @@ export default {
       const date = currentDate.value
       const year = date.getFullYear()
       const month = date.getMonth()
-      const firstDay = new Date(year, month, 1)
-      const lastDay = new Date(year, month + 1, 0)
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
       const days = []
-
-      // Add days from previous month
+  
+  // Add days from previous month
       const firstDayOfWeek = firstDay.getDay() || 7
       for (let i = 1; i < firstDayOfWeek; i++) {
         const prevDate = new Date(year, month, 1 - i)
@@ -272,21 +272,21 @@ export default {
       }
 
       // Add days of current month
-      for (let i = 1; i <= lastDay.getDate(); i++) {
-        const currentDate = new Date(year, month, i)
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    const currentDate = new Date(year, month, i)
         days.push({
           date: currentDate,
           dayNumber: i,
           isCurrentMonth: true,
           isToday: isSameDay(currentDate, new Date()),
           events: getEventsForDay(currentDate)
-        })
-      }
-
-      // Add days from next month
+    })
+  }
+  
+  // Add days from next month
       const remainingDays = 42 - days.length
-      for (let i = 1; i <= remainingDays; i++) {
-        const nextDate = new Date(year, month + 1, i)
+  for (let i = 1; i <= remainingDays; i++) {
+    const nextDate = new Date(year, month + 1, i)
         days.push({
           date: nextDate,
           dayNumber: nextDate.getDate(),
@@ -752,13 +752,13 @@ export default {
     flex-direction: column;
     gap: 10px;
   }
-
+  
   .day-cell {
     min-height: 80px;
   }
-
+  
   .event-pill {
     font-size: 0.7em;
   }
 }
-</style>
+</style> 
