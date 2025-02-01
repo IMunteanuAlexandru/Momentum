@@ -27,6 +27,10 @@
           <i class="fas fa-chart-line">📈</i>
           <span>Analytics</span>
         </router-link>
+        <router-link to="/dashboard/export" class="nav-item">
+          <span class="nav-icon">📤</span>
+          <span>Export</span>
+        </router-link>
         <router-link to="/dashboard/settings" class="nav-item">
           <i class="fas fa-cog">⚙️</i>
           <span>Settings</span>
