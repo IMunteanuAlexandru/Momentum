@@ -68,80 +68,93 @@
   </div>
 </template>
 
-<script>
-import { ref } from 'vue'
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 
-export default {
-  name: 'Register',
-  setup() {
-    const store = useStore()
-    const router = useRouter()
-    const username = ref('')
-    const email = ref('')
-    const password = ref('')
-    const confirmPassword = ref('')
-    const loading = ref(false)
-    const errors = ref({})
+const store = useStore()
+const router = useRouter()
+const username = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const loading = ref(false)
+const errors = ref({})
+const currentTime = ref('')
 
-    const validateForm = () => {
-      errors.value = {}
-      
-      if (!username.value) {
-        errors.value.username = 'Username is required'
-      } else if (username.value.length < 3) {
-        errors.value.username = 'Username must be at least 3 characters'
-      }
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+}
 
-      if (!email.value) {
-        errors.value.email = 'Email is required'
-      } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-        errors.value.email = 'Please enter a valid email'
-      }
+let timeInterval
+onMounted(() => {
+  updateTime()
+  timeInterval = setInterval(updateTime, 1000)
+  
+  // If already authenticated, redirect to dashboard
+  if (store.state.auth.isAuthenticated) {
+    router.push('/dashboard')
+  }
+})
 
-      if (!password.value) {
-        errors.value.password = 'Password is required'
-      } else if (password.value.length < 6) {
-        errors.value.password = 'Password must be at least 6 characters'
-      }
+onUnmounted(() => {
+  if (timeInterval) clearInterval(timeInterval)
+})
 
-      if (!confirmPassword.value) {
-        errors.value.confirmPassword = 'Please confirm your password'
-      } else if (password.value !== confirmPassword.value) {
-        errors.value.confirmPassword = 'Passwords do not match'
-      }
+const validateForm = () => {
+  errors.value = {}
+  
+  if (!username.value) {
+    errors.value.username = 'Username is required'
+  } else if (username.value.length < 3) {
+    errors.value.username = 'Username must be at least 3 characters'
+  }
 
-      return Object.keys(errors.value).length === 0
-    }
+  if (!email.value) {
+    errors.value.email = 'Email is required'
+  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
+    errors.value.email = 'Please enter a valid email'
+  }
 
-    const handleSubmit = async () => {
-      if (!validateForm()) return
+  if (!password.value) {
+    errors.value.password = 'Password is required'
+  } else if (password.value.length < 6) {
+    errors.value.password = 'Password must be at least 6 characters'
+  }
 
-      loading.value = true
-      try {
-        await store.dispatch('auth/register', {
-          username: username.value,
-          email: email.value,
-          password: password.value
-        })
-        router.push('/')
-      } catch (error) {
-        errors.value.general = error.message
-      } finally {
-        loading.value = false
-      }
-    }
+  if (!confirmPassword.value) {
+    errors.value.confirmPassword = 'Please confirm your password'
+  } else if (password.value !== confirmPassword.value) {
+    errors.value.confirmPassword = 'Passwords do not match'
+  }
 
-    return {
-      username,
-      email,
-      password,
-      confirmPassword,
-      loading,
-      errors,
-      handleSubmit
-    }
+  return Object.keys(errors.value).length === 0
+}
+
+const handleSubmit = async () => {
+  if (!validateForm()) return
+
+  loading.value = true
+  errors.value = {}
+
+  try {
+    await store.dispatch('auth/register', {
+      username: username.value,
+      email: email.value,
+      password: password.value
+    })
+    // Explicitly redirect to dashboard after successful registration
+    router.push('/dashboard')
+  } catch (error) {
+    errors.value.general = error.message || 'Registration failed. Please try again.'
+  } finally {
+    loading.value = false
   }
 }
 </script>

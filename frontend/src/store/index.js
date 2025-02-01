@@ -1,63 +1,108 @@
 import { createStore } from 'vuex'
-import axios from 'axios'
+
+// Hardcoded users for testing
+const users = [
+  {
+    id: 1,
+    username: 'demo',
+    email: 'demo@example.com',
+    password: 'demo123' // In real app, passwords should be hashed
+  },
+  {
+    id: 2,
+    username: 'test',
+    email: 'test@example.com',
+    password: 'test123'
+  }
+]
 
 const auth = {
   namespaced: true,
   state: {
-    user: null,
-    isAuthenticated: false,
+    user: JSON.parse(localStorage.getItem('user')),
+    isAuthenticated: !!localStorage.getItem('user'),
     token: localStorage.getItem('token')
   },
   mutations: {
     SET_USER(state, user) {
       state.user = user
       state.isAuthenticated = !!user
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user))
+      } else {
+        localStorage.removeItem('user')
+      }
     },
     SET_TOKEN(state, token) {
       state.token = token
       if (token) {
         localStorage.setItem('token', token)
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       } else {
         localStorage.removeItem('token')
-        delete axios.defaults.headers.common['Authorization']
       }
     }
   },
   actions: {
     async login({ commit }, credentials) {
-      try {
-        const response = await axios.post('/api/auth/login', credentials)
-        const { user, token } = response.data
-        commit('SET_USER', user)
-        commit('SET_TOKEN', token)
-        return user
-      } catch (error) {
-        throw new Error(error.response?.data?.message || 'Login failed')
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const user = users.find(u => 
+        u.email === credentials.email && 
+        u.password === credentials.password
+      )
+
+      if (user) {
+        // Create a copy without the password
+        const userWithoutPassword = { ...user }
+        delete userWithoutPassword.password
+
+        commit('SET_USER', userWithoutPassword)
+        commit('SET_TOKEN', 'fake-jwt-token-' + user.id)
+        return userWithoutPassword
+      } else {
+        throw new Error('Invalid email or password')
       }
     },
     async register({ commit }, userData) {
-      try {
-        const response = await axios.post('/api/auth/register', userData)
-        const { user, token } = response.data
-        commit('SET_USER', user)
-        commit('SET_TOKEN', token)
-        return user
-      } catch (error) {
-        throw new Error(error.response?.data?.message || 'Registration failed')
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Check if email already exists
+      if (users.some(u => u.email === userData.email)) {
+        throw new Error('Email already registered')
       }
+
+      // Create new user
+      const newUser = {
+        id: users.length + 1,
+        username: userData.username,
+        email: userData.email,
+        password: userData.password
+      }
+
+      // Add to users array (in real app, this would be saved to a database)
+      users.push(newUser)
+
+      // Create a copy without the password
+      const userWithoutPassword = { ...newUser }
+      delete userWithoutPassword.password
+
+      commit('SET_USER', userWithoutPassword)
+      commit('SET_TOKEN', 'fake-jwt-token-' + newUser.id)
+      return userWithoutPassword
     },
     logout({ commit }) {
       commit('SET_USER', null)
       commit('SET_TOKEN', null)
     },
     async checkAuth({ commit, state }) {
-      if (!state.token) return
-      
-      try {
-        const response = await axios.get('/api/auth/me')
-        commit('SET_USER', response.data)
-      } catch (error) {
+      // Simulate checking token validity
+      const user = JSON.parse(localStorage.getItem('user'))
+      if (user && users.some(u => u.id === user.id)) {
+        commit('SET_USER', user)
+        return user
+      } else {
         commit('SET_USER', null)
         commit('SET_TOKEN', null)
       }
