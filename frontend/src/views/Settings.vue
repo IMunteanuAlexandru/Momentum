@@ -12,35 +12,34 @@
           @change="handleThemeChange" 
           class="theme-select"
         >
-          <option value="theme-default">Default Theme (Dark Teal)</option>
-          <option value="theme-light">Light Theme</option>
-          <option value="theme-dark">Dark Theme</option>
+          <option value="theme-modern">Modern Theme</option>
           <option value="theme-retro">Retro Theme</option>
+          <option value="theme-dark">Dark Theme</option>
           <option value="theme-nature">Nature Theme</option>
-          <option value="theme-energy">Soft Pink Theme</option>
+          <option value="theme-soft">Soft Theme</option>
         </select>
         
-        <div class="theme-preview" :class="[currentTheme]">
-          <div class="color-sample primary">Primary</div>
-          <div class="color-sample secondary">Secondary</div>
-          <div class="color-sample background">Background</div>
-          <div class="color-sample text">Text</div>
-        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 
 const store = useStore()
-const currentTheme = ref('theme-default')
+const currentTheme = ref('theme-modern')
+
+const hasAccentColors = computed(() => {
+  return ['theme-modern', 'theme-retro', 'theme-soft'].includes(currentTheme.value)
+})
 
 const handleThemeChange = () => {
   localStorage.setItem('theme', currentTheme.value)
   document.documentElement.className = currentTheme.value
+  // Refresh the page
+  window.location.reload()
 }
 
 onMounted(() => {
@@ -118,47 +117,6 @@ h2 {
   box-shadow: 0 0 0 2px rgba(var(--secondary), 0.2);
 }
 
-.theme-preview {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.color-sample {
-  padding: 1.25rem;
-  border-radius: 8px;
-  text-align: center;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: transform 0.2s ease;
-}
-
-.color-sample:hover {
-  transform: translateY(-2px);
-}
-
-.color-sample.primary {
-  background-color: var(--primary);
-  color: white;
-}
-
-.color-sample.secondary {
-  background-color: var(--secondary);
-  color: white;
-}
-
-.color-sample.background {
-  background-color: var(--background);
-  color: var(--text);
-  border: 2px solid var(--primary);
-}
-
-.color-sample.text {
-  background-color: var(--text);
-  color: var(--background);
-}
-
 @media (max-width: 640px) {
   .settings-container {
     padding: 1rem;
@@ -172,8 +130,5 @@ h2 {
     padding: 1.5rem;
   }
 
-  .theme-preview {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 </style> 

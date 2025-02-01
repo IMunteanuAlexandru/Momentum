@@ -42,58 +42,73 @@
   </div>
 </template>
 
-<script>
-import { ref } from 'vue'
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 
-export default {
-  name: 'Login',
-  setup() {
-    const store = useStore()
-    const router = useRouter()
-    const email = ref('')
-    const password = ref('')
-    const loading = ref(false)
-    const errors = ref({})
+const store = useStore()
+const router = useRouter()
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const errors = ref({})
+const currentTime = ref('')
 
-    const validateForm = () => {
-      errors.value = {}
-      if (!email.value) {
-        errors.value.email = 'Email is required'
-      } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-        errors.value.email = 'Please enter a valid email'
-      }
-      if (!password.value) {
-        errors.value.password = 'Password is required'
-      }
-      return Object.keys(errors.value).length === 0
-    }
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+}
 
-    const handleSubmit = async () => {
-      if (!validateForm()) return
+let timeInterval
+onMounted(() => {
+  updateTime()
+  timeInterval = setInterval(updateTime, 1000)
+  
+  // If already authenticated, redirect to dashboard
+  if (store.state.auth.isAuthenticated) {
+    router.push('/dashboard')
+  }
+})
 
-      loading.value = true
-      try {
-        await store.dispatch('auth/login', {
-          email: email.value,
-          password: password.value
-        })
-        router.push('/')
-      } catch (error) {
-        errors.value.general = error.message
-      } finally {
-        loading.value = false
-      }
-    }
+onUnmounted(() => {
+  if (timeInterval) clearInterval(timeInterval)
+})
 
-    return {
-      email,
-      password,
-      loading,
-      errors,
-      handleSubmit
-    }
+const validateForm = () => {
+  errors.value = {}
+  if (!email.value) {
+    errors.value.email = 'Email is required'
+  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
+    errors.value.email = 'Please enter a valid email'
+  }
+  if (!password.value) {
+    errors.value.password = 'Password is required'
+  }
+  return Object.keys(errors.value).length === 0
+}
+
+const handleSubmit = async () => {
+  if (!validateForm()) return
+
+  loading.value = true
+  errors.value = {}
+
+  try {
+    await store.dispatch('auth/login', {
+      email: email.value,
+      password: password.value
+    })
+    // Explicitly redirect to dashboard after successful login
+    router.push('/dashboard')
+  } catch (error) {
+    errors.value.general = error.message || 'Login failed. Please try again.'
+  } finally {
+    loading.value = false
   }
 }
 </script>

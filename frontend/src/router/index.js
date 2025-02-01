@@ -6,30 +6,65 @@ const Welcome = () => import('../views/Welcome.vue')
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
 const Settings = () => import('../views/Settings.vue')
+const Dashboard = () => import('../views/Dashboard.vue')
 
 const routes = [
   {
     path: '/',
-    name: 'Welcome',
-    component: Welcome
+    redirect: '/dashboard'
   },
   {
     path: '/login',
     name: 'Login',
-    component: Login,
+    component: () => import('../views/Login.vue'),
     meta: { requiresGuest: true }
   },
   {
     path: '/register',
     name: 'Register',
-    component: Register,
+    component: () => import('../views/Register.vue'),
     meta: { requiresGuest: true }
   },
   {
-    path: '/settings',
-    name: 'Settings',
-    component: Settings,
-    meta: { requiresAuth: true }
+    path: '/dashboard',
+    component: () => import('../views/Dashboard.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Overview',
+        component: () => import('../views/dashboard/Overview.vue')
+      },
+      {
+        path: 'tasks',
+        name: 'Tasks',
+        component: () => import('../views/dashboard/Tasks.vue')
+      },
+      {
+        path: 'calendar',
+        name: 'Calendar',
+        component: () => import('../views/dashboard/Calendar.vue')
+      },
+      {
+        path: 'notes',
+        name: 'Notes',
+        component: () => import('../views/dashboard/Notes.vue')
+      },
+      {
+        path: 'analytics',
+        name: 'Analytics',
+        component: () => import('../views/dashboard/Analytics.vue')
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('../views/Settings.vue')
+      }
+    ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/dashboard'
   }
 ]
 
@@ -42,19 +77,13 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = store.state.auth.isAuthenticated
   
-  // Routes that require guest access
-  if (to.meta.requiresGuest && isAuthenticated) {
-    next('/')
-    return
-  }
-
-  // Routes that require authentication
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
-    return
+  } else if (to.meta.requiresGuest && isAuthenticated) {
+    next('/dashboard')
+  } else {
+    next()
   }
-
-  next()
 })
 
 export default router 

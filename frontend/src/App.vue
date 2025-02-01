@@ -5,10 +5,17 @@ import { useRouter } from 'vue-router'
 
 const store = useStore()
 const router = useRouter()
-const currentTheme = ref('theme-light')
+const currentTheme = ref('theme-modern')
 
 const isAuthenticated = computed(() => store.state.auth.isAuthenticated)
 const username = computed(() => store.state.auth.user?.username)
+
+const setTheme = (theme) => {
+  currentTheme.value = theme
+  localStorage.setItem('theme', theme)
+  // Refresh the page
+  window.location.reload()
+}
 
 const logout = () => {
   store.dispatch('auth/logout')
@@ -26,22 +33,17 @@ onMounted(() => {
 
 <template>
   <div :class="[currentTheme]">
-    <nav class="nav-header">
+    <nav v-if="!isAuthenticated" class="nav-header">
       <div class="logo">
         <router-link to="/" class="logo-link">Momentum</router-link>
       </div>
-      <div v-if="!isAuthenticated" class="auth-buttons">
+      <div class="auth-buttons">
         <router-link to="/login" class="btn-login">Login</router-link>
         <router-link to="/register" class="btn-register">Register</router-link>
       </div>
-      <div v-else class="user-menu">
-        <router-link to="/settings" class="btn-settings">Settings</router-link>
-        <span>{{ username }}</span>
-        <button @click="logout" class="btn-logout">Logout</button>
-      </div>
     </nav>
 
-    <main class="main-content">
+    <main :class="{ 'main-content': !isAuthenticated, 'full-height': isAuthenticated }">
       <router-view></router-view>
     </main>
   </div>
@@ -49,11 +51,17 @@ onMounted(() => {
 
 <style>
 :root {
+  /* Modern Theme */
+  --modern-primary: #315659;
+  --modern-secondary: #2978A0;
+  --modern-background: #253031;
+  --modern-text: #BCAB79;
+
   /* Retro Theme */
-  --retro-primary: #f4a460;
-  --retro-secondary: #8b4513;
-  --retro-background: #faf0e6;
-  --retro-text: #654321;
+  --retro-primary: #423e37ff;
+  --retro-secondary:  #6A8D92;
+  --retro-background: #edebd7ff;
+  --retro-text: #000;
 
   /* Dark Theme */
   --dark-primary: #134b42;
@@ -61,28 +69,29 @@ onMounted(() => {
   --dark-background: #121212;
   --dark-text: #ffffff;
 
-  /* Light Theme */
-  --light-primary: #6200ee;
-  --light-secondary: #03dac6;
-  --light-background: #ffffff;
-  --light-text: #000000;
-
   /* Nature Theme */
   --nature-primary: #4caf50;
   --nature-secondary: #81c784;
   --nature-background: #f1f8e9;
   --nature-text: #1b5e20;
 
-  /* Energy Theme (Soft Pink) */
-  --energy-primary: #ff9ecd;
-  --energy-secondary: #ffb7e3;
-  --energy-background: #fff0f7;
-  --energy-text: #d4367a;
+  /* Soft Theme */
+  --soft-primary: #eac8ca;
+  --soft-secondary: #f2d5f8;
+  --soft-background: #ffffff;
+  --soft-text: #717c89;
+}
+
+.theme-modern {
+  --primary: var(--modern-primary);
+  --secondary: var(--modern-secondary);
+  --background: var(--modern-background);
+  --text: var(--modern-text);
 }
 
 .theme-retro {
   --primary: var(--retro-primary);
-  --secondary: var(--retro-secondary);
+  --secondary: var(--retro-secondary);;
   --background: var(--retro-background);
   --text: var(--retro-text);
 }
@@ -94,13 +103,6 @@ onMounted(() => {
   --text: var(--dark-text);
 }
 
-.theme-light {
-  --primary: var(--light-primary);
-  --secondary: var(--light-secondary);
-  --background: var(--light-background);
-  --text: var(--light-text);
-}
-
 .theme-nature {
   --primary: var(--nature-primary);
   --secondary: var(--nature-secondary);
@@ -108,11 +110,11 @@ onMounted(() => {
   --text: var(--nature-text);
 }
 
-.theme-energy {
-  --primary: var(--energy-primary);
-  --secondary: var(--energy-secondary);
-  --background: var(--energy-background);
-  --text: var(--energy-text);
+.theme-soft {
+  --primary: var(--soft-primary);
+  --secondary: var(--soft-secondary);
+  --background: var(--soft-background);
+  --text: var(--soft-text);
 }
 
 /* Global Styles */
@@ -176,8 +178,14 @@ body {
   min-height: calc(100vh - 64px);
   background-color: var(--background);
   color: var(--text);
-  padding: 2rem;
-  overflow-y: auto; /* Ensure scrolling is enabled */
+  overflow-y: auto;
+}
+
+.full-height {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--text);
+  overflow-y: auto;
 }
 
 .user-menu {
