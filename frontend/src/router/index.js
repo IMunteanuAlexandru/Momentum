@@ -11,7 +11,9 @@ const Dashboard = () => import('../views/Dashboard.vue')
 const routes = [
   {
     path: '/',
-    redirect: '/dashboard'
+    name: 'Welcome',
+    component: Welcome,
+    meta: { requiresGuest: true }
   },
   {
     path: '/login',
