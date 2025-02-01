@@ -14,5 +14,9 @@ app.use(store)
 // Check authentication status on app start
 store.dispatch('auth/checkAuth')
 
+// Initialize tasks and calendar
+store.dispatch('tasks/initTasks')
+store.dispatch('calendar/initEvents')
+
 // Mount the app
 app.mount('#app')
