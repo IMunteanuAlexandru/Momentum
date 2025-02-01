@@ -1,4 +1,3 @@
-
 # Momentum - AI-Powered Time Management App
 
 Momentum is a web application designed to help users manage their time effectively. It features task planning, productivity statistics, and an AI-powered voice assistant for simple commands. The app includes user authentication, customizable design, interactive charts, and notifications to keep users on track.
@@ -19,7 +18,7 @@ Momentum is a web application designed to help users manage their time effective
 ## Technologies Used
 
 ### Frontend
-- **React.js**: For building the user interface.
+- **Vue.js**: For building the user interface.
 - **Tailwind CSS**: For styling the app.
 - **Chart.js**: For displaying charts and graphs.
 - **Firebase SDK**: For authentication and database integration.
@@ -47,7 +46,7 @@ Momentum is a web application designed to help users manage their time effective
    ```bash
    cd frontend
    npm install
-   npm start
+   npm run dev
    ```
 
 3. **Backend Setup**:
@@ -59,7 +58,7 @@ Momentum is a web application designed to help users manage their time effective
 
 4. **Run the Application**:
    - Start the frontend and backend servers.
-   - Access the app at `http://localhost:3000`.
+   - Access the app at `http://localhost:8080`.
 
 ---
 
@@ -67,8 +66,8 @@ Momentum is a web application designed to help users manage their time effective
 
 ```
 momentum/
-├── frontend/               # React frontend
-│   ├── src/                # React components and logic
+├── frontend/               # Vue.js frontend
+│   ├── src/                # Vue components and logic
 │   └── package.json        # Frontend dependencies
 │
 ├── backend/                # Flask backend
@@ -78,7 +77,6 @@ momentum/
 └── README.md               # Project documentation
 ```
 
-
 ---
 
 ## License
@@ -86,4 +84,3 @@ momentum/
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-
