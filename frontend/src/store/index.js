@@ -1,4 +1,6 @@
 import { createStore } from 'vuex'
+import tasks from './modules/tasks'
+import calendar from './modules/calendar'
 
 // Hardcoded users for testing
 const users = [
@@ -112,6 +114,8 @@ const auth = {
 
 export default createStore({
   modules: {
-    auth
+    auth,
+    tasks,
+    calendar
   }
 }) 
