@@ -88,7 +88,6 @@ onUnmounted(() => {
 
 <style scoped>
 .dashboard-container {
-  display: flex;
   min-height: 100vh;
   background-color: var(--background);
 }
