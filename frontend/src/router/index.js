@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAuth } from 'firebase/auth'
 import store from '../store'
 import Export from '@/views/dashboard/Export.vue'
 
@@ -12,25 +13,22 @@ const Dashboard = () => import('../views/Dashboard.vue')
 const routes = [
   {
     path: '/',
-    name: 'Welcome',
-    component: Welcome,
-    meta: { requiresGuest: true }
+    redirect: '/login'
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../views/Login.vue'),
+    component: Login,
     meta: { requiresGuest: true }
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('../views/Register.vue'),
+    component: Register,
     meta: { requiresGuest: true }
   },
   {
     path: '/dashboard',
-    name: 'Dashboard',
     component: Dashboard,
     meta: { requiresAuth: true },
     children: [
@@ -67,7 +65,7 @@ const routes = [
       {
         path: 'settings',
         name: 'Settings',
-        component: () => import('../views/Settings.vue')
+        component: Settings
       }
     ]
   },
@@ -83,12 +81,24 @@ const router = createRouter({
 })
 
 // Navigation Guards
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = store.state.auth.isAuthenticated
+router.beforeEach(async (to, from, next) => {
+  const auth = getAuth()
   
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  // Așteaptă inițializarea Firebase Auth
+  await new Promise(resolve => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      unsubscribe()
+      resolve(user)
+    })
+  })
+
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+  const isAuthenticated = !!auth.currentUser
+
+  if (requiresAuth && !isAuthenticated) {
     next('/login')
-  } else if (to.meta.requiresGuest && isAuthenticated) {
+  } else if (requiresGuest && isAuthenticated) {
     next('/dashboard')
   } else {
     next()

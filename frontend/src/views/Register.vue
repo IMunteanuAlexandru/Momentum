@@ -2,61 +2,58 @@
   <div class="auth-container">
     <div class="auth-card">
       <h2>Create Account</h2>
-      <form @submit.prevent="handleSubmit" class="auth-form">
+      <form @submit.prevent="handleRegister" class="auth-form">
         <div class="form-group">
-          <label for="username">Username</label>
+          <label for="displayName">Username</label>
           <input
             type="text"
-            id="username"
-            v-model="username"
+            id="displayName"
+            v-model="form.displayName"
             required
             class="form-input"
-            :class="{ 'error': errors.username }"
+            :class="{ 'error': error }"
           />
-          <span v-if="errors.username" class="error-message">{{ errors.username }}</span>
         </div>
-
+        
         <div class="form-group">
           <label for="email">Email</label>
           <input
             type="email"
             id="email"
-            v-model="email"
+            v-model="form.email"
             required
             class="form-input"
-            :class="{ 'error': errors.email }"
+            :class="{ 'error': error }"
           />
-          <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
         </div>
-
+        
         <div class="form-group">
           <label for="password">Password</label>
           <input
             type="password"
             id="password"
-            v-model="password"
+            v-model="form.password"
             required
             class="form-input"
-            :class="{ 'error': errors.password }"
+            :class="{ 'error': error }"
           />
-          <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
         </div>
 
-        <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            v-model="confirmPassword"
-            required
-            class="form-input"
-            :class="{ 'error': errors.confirmPassword }"
-          />
-          <span v-if="errors.confirmPassword" class="error-message">{{ errors.confirmPassword }}</span>
+        <div v-if="error" class="error-message">
+          {{ error }}
         </div>
 
         <button type="submit" class="btn-submit" :disabled="loading">
           {{ loading ? 'Creating Account...' : 'Register' }}
+        </button>
+
+        <div class="divider">
+          <span>or</span>
+        </div>
+
+        <button type="button" class="btn-google" @click="handleGoogleRegister" :disabled="loading">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" />
+          Continue with Google
         </button>
 
         <p class="auth-link">
@@ -68,93 +65,153 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useStore } from 'vuex'
+<script>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import axios from 'axios'
 
-const store = useStore()
-const router = useRouter()
-const username = ref('')
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const loading = ref(false)
-const errors = ref({})
-const currentTime = ref('')
-
-const updateTime = () => {
-  const now = new Date()
-  currentTime.value = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  })
-}
-
-let timeInterval
-onMounted(() => {
-  updateTime()
-  timeInterval = setInterval(updateTime, 1000)
-  
-  // If already authenticated, redirect to dashboard
-  if (store.state.auth.isAuthenticated) {
-    router.push('/dashboard')
-  }
-})
-
-onUnmounted(() => {
-  if (timeInterval) clearInterval(timeInterval)
-})
-
-const validateForm = () => {
-  errors.value = {}
-  
-  if (!username.value) {
-    errors.value.username = 'Username is required'
-  } else if (username.value.length < 3) {
-    errors.value.username = 'Username must be at least 3 characters'
-  }
-
-  if (!email.value) {
-    errors.value.email = 'Email is required'
-  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-    errors.value.email = 'Please enter a valid email'
-  }
-
-  if (!password.value) {
-    errors.value.password = 'Password is required'
-  } else if (password.value.length < 6) {
-    errors.value.password = 'Password must be at least 6 characters'
-  }
-
-  if (!confirmPassword.value) {
-    errors.value.confirmPassword = 'Please confirm your password'
-  } else if (password.value !== confirmPassword.value) {
-    errors.value.confirmPassword = 'Passwords do not match'
-  }
-
-  return Object.keys(errors.value).length === 0
-}
-
-const handleSubmit = async () => {
-  if (!validateForm()) return
-
-  loading.value = true
-  errors.value = {}
-
-  try {
-    await store.dispatch('auth/register', {
-      username: username.value,
-      email: email.value,
-      password: password.value
+export default {
+  name: 'Register',
+  setup() {
+    const router = useRouter()
+    const auth = getAuth()
+    const googleProvider = new GoogleAuthProvider()
+    googleProvider.addScope('profile')
+    googleProvider.addScope('email')
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
     })
-    // Explicitly redirect to dashboard after successful registration
-    router.push('/dashboard')
-  } catch (error) {
-    errors.value.general = error.message || 'Registration failed. Please try again.'
-  } finally {
-    loading.value = false
+    
+    const form = ref({
+      displayName: '',
+      email: '',
+      password: ''
+    })
+    
+    const loading = ref(false)
+    const error = ref('')
+
+    const handleGoogleRegister = async () => {
+      loading.value = true
+      error.value = ''
+      
+      try {
+        console.log('Starting Google registration...')
+        
+        // Verifică dacă Firebase este inițializat corect
+        if (!auth) {
+          throw new Error('Firebase Auth is not initialized')
+        }
+
+        // Verifică configurația Firebase
+        console.log('Firebase config:', {
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
+        })
+
+        // Încearcă autentificarea cu Google
+        const result = await signInWithPopup(auth, googleProvider)
+          .catch(error => {
+            console.error('PopUp error:', error)
+            if (error.code === 'auth/popup-blocked') {
+              throw new Error('Please allow popups for this website')
+            }
+            if (error.code === 'auth/cancelled-popup-request') {
+              throw new Error('Authentication cancelled')
+            }
+            throw error
+          })
+
+        if (!result?.user) {
+          throw new Error('No user data received')
+        }
+
+        console.log('Google login successful:', {
+          email: result.user.email,
+          displayName: result.user.displayName,
+          uid: result.user.uid
+        })
+        
+        const token = await result.user.getIdToken()
+        console.log('Got ID token')
+        localStorage.setItem('token', token)
+
+        // Register with backend
+        console.log('Sending data to backend...')
+        try {
+          const userData = {
+            email: result.user.email,
+            displayName: result.user.displayName,
+            photoURL: result.user.photoURL,
+            uid: result.user.uid
+          }
+          console.log('User data being sent:', userData)
+          
+          const response = await axios.post('http://localhost:5000/api/auth/google', userData)
+          console.log('Backend response:', response.data)
+          
+          if (response.data.status === 'success') {
+            console.log('Registration successful, redirecting to dashboard...')
+            router.push('/dashboard')
+          } else {
+            throw new Error(response.data.message || 'Registration failed')
+          }
+        } catch (backendError) {
+          console.error('Backend error:', backendError)
+          if (backendError.response) {
+            console.error('Backend response:', backendError.response.data)
+            throw new Error(backendError.response.data.message || 'Could not complete registration with backend')
+          }
+          throw new Error('Could not connect to backend')
+        }
+      } catch (e) {
+        console.error('Google authentication error:', e)
+        error.value = e.message || 'Google authentication failed'
+        
+        // Curăță token-ul dacă există o eroare
+        localStorage.removeItem('token')
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const handleRegister = async () => {
+      loading.value = true
+      error.value = ''
+      
+      try {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          form.value.email,
+          form.value.password
+        )
+
+        await updateProfile(userCredential.user, {
+          displayName: form.value.displayName
+        })
+
+        await axios.post('http://localhost:5000/api/register', {
+          email: form.value.email,
+          password: form.value.password,
+          displayName: form.value.displayName
+        })
+
+        router.push('/dashboard')
+      } catch (e) {
+        error.value = e.message
+      } finally {
+        loading.value = false
+      }
+    }
+
+    return {
+      form,
+      loading,
+      error,
+      handleRegister,
+      handleGoogleRegister
+    }
   }
 }
 </script>
@@ -242,5 +299,57 @@ const handleSubmit = async () => {
 
 .auth-link a:hover {
   text-decoration: underline;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--primary);
+  opacity: 0.2;
+}
+
+.divider span {
+  padding: 0 1rem;
+  color: var(--text);
+  opacity: 0.7;
+  font-size: 0.875rem;
+}
+
+.btn-google {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--background);
+  color: var(--text);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: opacity 0.2s;
+}
+
+.btn-google:hover {
+  opacity: 0.9;
+}
+
+.btn-google:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-google img {
+  width: 18px;
+  height: 18px;
 }
 </style> 

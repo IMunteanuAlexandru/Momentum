@@ -16,15 +16,15 @@
         <h3>Today's Progress</h3>
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-value">5</div>
+            <div class="stat-value">{{ stats.completedTasks }}</div>
             <div class="stat-label">Tasks Completed</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">3</div>
+            <div class="stat-value">{{ stats.inProgressTasks }}</div>
             <div class="stat-label">In Progress</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">85%</div>
+            <div class="stat-value">{{ Math.round((stats.completedTasks / (stats.completedTasks + stats.inProgressTasks + stats.upcomingTasks)) * 100 || 0) }}%</div>
             <div class="stat-label">Productivity</div>
           </div>
         </div>
@@ -34,26 +34,15 @@
       <div class="overview-card tasks-card">
         <h3>Recent Tasks</h3>
         <div class="task-list">
-          <div class="task-item">
-            <div class="task-status completed"></div>
+          <div v-for="task in recentTasks" :key="task.id" class="task-item">
+            <div :class="['task-status', task.status]"></div>
             <div class="task-content">
-              <h4>Complete Project Presentation</h4>
-              <p>Due today at 15:00</p>
+              <h4>{{ task.title }}</h4>
+              <p>Due {{ formatDate(task.dueDate) }}</p>
             </div>
           </div>
-          <div class="task-item">
-            <div class="task-status in-progress"></div>
-            <div class="task-content">
-              <h4>Review Code Changes</h4>
-              <p>Due tomorrow at 12:00</p>
-            </div>
-          </div>
-          <div class="task-item">
-            <div class="task-status pending"></div>
-            <div class="task-content">
-              <h4>Team Meeting</h4>
-              <p>Thursday at 10:00</p>
-            </div>
+          <div v-if="recentTasks.length === 0" class="no-tasks">
+            No tasks available
           </div>
         </div>
       </div>
@@ -63,13 +52,34 @@
         <h3>Weekly Productivity</h3>
         <div class="chart-container">
           <div class="placeholder-chart">
-            <div class="chart-bar" style="height: 60%"></div>
-            <div class="chart-bar" style="height: 80%"></div>
-            <div class="chart-bar" style="height: 40%"></div>
-            <div class="chart-bar" style="height: 90%"></div>
-            <div class="chart-bar" style="height: 70%"></div>
-            <div class="chart-bar" style="height: 50%"></div>
-            <div class="chart-bar" style="height: 75%"></div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 60%"></div>
+              <div class="chart-date">{{ getDayLabel(6) }}</div>
+            </div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 80%"></div>
+              <div class="chart-date">{{ getDayLabel(5) }}</div>
+            </div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 40%"></div>
+              <div class="chart-date">{{ getDayLabel(4) }}</div>
+            </div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 90%"></div>
+              <div class="chart-date">{{ getDayLabel(3) }}</div>
+            </div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 70%"></div>
+              <div class="chart-date">{{ getDayLabel(2) }}</div>
+            </div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 50%"></div>
+              <div class="chart-date">{{ getDayLabel(1) }}</div>
+            </div>
+            <div class="chart-column">
+              <div class="chart-bar" style="height: 75%"></div>
+              <div class="chart-date">{{ getDayLabel(0) }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -100,13 +110,101 @@
   </div>
 </template>
 
-<script setup>
-// Component logic will be added later
+<script>
+import { ref, computed, onMounted } from 'vue'
+import { useStore } from 'vuex'
+import axios from 'axios'
+
+export default {
+  name: 'DashboardOverview',
+  
+  setup() {
+    const store = useStore()
+    const recentTasks = ref([])
+    const todayEvents = ref([])
+    const lastLogin = ref(null)
+    const stats = ref({
+      completedTasks: 0,
+      inProgressTasks: 0,
+      upcomingTasks: 0
+    })
+
+    const userDisplayName = computed(() => {
+      const user = store.getters['auth/currentUser']
+      return user?.displayName || 'User'
+    })
+
+    const fetchDashboardData = async () => {
+      try {
+        const token = store.getters['auth/token']
+        const response = await axios.get('http://localhost:5000/api/dashboard/overview', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+
+        if (response.data.status === 'success') {
+          const data = response.data.data
+          recentTasks.value = data.recentTasks || []
+          todayEvents.value = data.todayEvents || []
+          lastLogin.value = data.lastLogin
+          stats.value = data.stats || {
+            completedTasks: 0,
+            inProgressTasks: 0,
+            upcomingTasks: 0
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      }
+    }
+
+    const formatDate = (date) => {
+      if (!date) return ''
+      return new Date(date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    }
+
+    const formatTime = (time) => {
+      if (!time) return ''
+      return new Date(time).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+
+    const getDayLabel = (daysAgo) => {
+      const date = new Date()
+      date.setDate(date.getDate() - daysAgo)
+      return date.toLocaleDateString('en-US', { weekday: 'short' })
+    }
+
+    onMounted(() => {
+      fetchDashboardData()
+    })
+
+    return {
+      userDisplayName,
+      recentTasks,
+      todayEvents,
+      lastLogin,
+      stats,
+      formatDate,
+      formatTime,
+      getDayLabel
+    }
+  }
+}
 </script>
 
 <style scoped>
 .overview-container {
-  padding: 1.5rem;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .page-header {
@@ -116,10 +214,11 @@
   margin-bottom: 2rem;
 }
 
-h1 {
-  color: var(--text);
-  font-size: 2rem;
+.page-header h1 {
+  font-size: 1.875rem;
   font-weight: 600;
+  color: var(--text);
+  margin: 0;
 }
 
 .btn-new-task {
@@ -130,10 +229,10 @@ h1 {
   background-color: var(--secondary);
   color: var(--text);
   border: none;
-  border-radius: 8px;
+  border-radius: 0.5rem;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s;
 }
 
 .btn-new-task:hover {
@@ -147,19 +246,20 @@ h1 {
 }
 
 .overview-card {
-  border-radius: 12px;
+  background: var(--primary);
+  border-radius: 1rem;
   padding: 1.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--primary);
 }
 
 .overview-card h3 {
-  color: var(--text);
   font-size: 1.25rem;
   font-weight: 600;
+  color: var(--text);
   margin-bottom: 1.5rem;
 }
 
+/* Stats Card */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -168,9 +268,6 @@ h1 {
 
 .stat-item {
   text-align: center;
-  background-color: var(--primary);
-  padding: 1rem;
-  border-radius: 8px;
 }
 
 .stat-value {
@@ -181,10 +278,11 @@ h1 {
 }
 
 .stat-label {
-  color: var(--text);
   font-size: 0.875rem;
+  color: var(--secondary);
 }
 
+/* Tasks Card */
 .task-list {
   display: flex;
   flex-direction: column;
@@ -196,46 +294,46 @@ h1 {
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background-color: var(--primary);
-  border-radius: 8px;
+  background: var(--secondary);
+  border-radius: 0.5rem;
 }
 
 .task-status {
-  width: 12px;
-  height: 12px;
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 50%;
 }
 
 .task-status.completed {
-  background-color: #4caf50;
+  background-color: var(--secondary);
 }
 
 .task-status.in-progress {
-  background-color: #ff9800;
+  background-color: var(--text);
 }
 
 .task-status.pending {
-  background-color: #f44336;
+  background-color: var(--primary);
 }
 
 .task-content h4 {
-  color: var(--text);
   font-size: 1rem;
   font-weight: 500;
-  margin-bottom: 0.25rem;
+  color: var(--text);
+  margin: 0 0 0.25rem 0;
 }
 
 .task-content p {
-  color: var(--text);
   font-size: 0.875rem;
-  opacity: 0.8;
+  color: var(--text);
+  margin: 0;
 }
 
+/* Chart Card */
 .chart-container {
-  height: 200px;
+  height: 240px;
   display: flex;
   align-items: flex-end;
-  gap: 1rem;
   padding: 1rem 0;
 }
 
@@ -245,16 +343,30 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 1rem 0;
+  padding: 0 1rem;
+}
+
+.chart-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .chart-bar {
-  width: 40px;
-  background-color: var(--primary);
-  border-radius: 4px;
+  width: 2rem;
+  background-color: var(--secondary);
+  border-radius: 0.25rem;
   transition: height 0.3s ease;
 }
 
+.chart-date {
+  color: var(--text);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+/* Actions Card */
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -266,22 +378,28 @@ h1 {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  padding: 1.5rem;
-  background-color: var(--primary);
+  padding: 1.25rem;
+  background: var(--secondary);
   border: none;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   color: var(--text);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s;
 }
 
 .action-btn:hover {
   transform: translateY(-2px);
-  background-color: var(--secondary);
+  background: var(--primary);
 }
 
 .action-btn i {
   font-size: 1.5rem;
+}
+
+.no-tasks {
+  text-align: center;
+  color: var(--text);
+  padding: 1rem;
 }
 
 @media (max-width: 1024px) {
@@ -297,8 +415,8 @@ h1 {
 
   .page-header {
     flex-direction: column;
-    gap: 1rem;
     align-items: flex-start;
+    gap: 1rem;
   }
 
   .stats-grid {

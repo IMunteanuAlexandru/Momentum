@@ -2,12 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import { getAuth, onAuthStateChanged } from 'firebase/auth'
 
 const store = useStore()
 const router = useRouter()
 const currentTheme = ref('theme-modern')
+const auth = getAuth()
 
-const isAuthenticated = computed(() => store.state.auth.isAuthenticated)
+const isAuthenticated = computed(() => !!auth.currentUser)
 const username = computed(() => store.state.auth.user?.username)
 
 const setTheme = (theme) => {
@@ -17,9 +19,13 @@ const setTheme = (theme) => {
   window.location.reload()
 }
 
-const logout = () => {
-  store.dispatch('auth/logout')
-  router.push('/login')
+const logout = async () => {
+  try {
+    await store.dispatch('auth/logout')
+    router.push('/login')
+  } catch (error) {
+    console.error('Logout error:', error)
+  }
 }
 
 onMounted(() => {
@@ -29,20 +35,31 @@ onMounted(() => {
     document.documentElement.className = savedTheme
   }
 })
+
+// Monitor auth state changes
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    try {
+      const token = await user.getIdToken()
+      await store.dispatch('auth/setUser', {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        uid: user.uid,
+        token
+      })
+    } catch (error) {
+      console.error('Error setting user:', error)
+      store.dispatch('auth/logout')
+    }
+  } else {
+    store.dispatch('auth/logout')
+  }
+})
 </script>
 
 <template>
   <div :class="[currentTheme]">
-    <nav v-if="!isAuthenticated" class="nav-header">
-      <div class="logo">
-        <router-link to="/" class="logo-link">Momentum</router-link>
-      </div>
-      <div class="auth-buttons">
-        <router-link to="/login" class="btn-login">Login</router-link>
-        <router-link to="/register" class="btn-register">Register</router-link>
-      </div>
-    </nav>
-
     <main :class="{ 'main-content': !isAuthenticated, 'full-height': isAuthenticated }">
       <router-view></router-view>
     </main>
@@ -138,42 +155,6 @@ body {
   -ms-overflow-style: none;
 }
 
-.nav-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background-color: var(--primary);
-  color: var(--text);
-}
-
-.logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.auth-buttons {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-login, .btn-register, .btn-logout, .btn-settings {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  text-decoration: none;
-  color: var(--text);
-  background-color: var(--secondary);
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: opacity 0.2s;
-}
-
-.btn-login:hover, .btn-register:hover, .btn-logout:hover, .btn-settings:hover {
-  opacity: 0.9;
-}
-
 .main-content {
   min-height: calc(100vh - 64px);
   background-color: var(--background);
@@ -186,22 +167,5 @@ body {
   background-color: var(--background);
   color: var(--text);
   overflow-y: auto;
-}
-
-.user-menu {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-menu span {
-  color: var(--text);
-  font-weight: 500;
-}
-
-.logo-link {
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 700;
 }
 </style>
