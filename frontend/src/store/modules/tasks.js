@@ -1,5 +1,9 @@
+import axios from 'axios'
+
 const state = {
-  list: []
+  list: [],
+  loading: false,
+  error: null
 }
 
 const mutations = {
@@ -18,68 +22,117 @@ const mutations = {
   DELETE_TASK(state, taskId) {
     state.list = state.list.filter(task => task.id !== taskId)
   },
-  TOGGLE_TASK_STATUS(state, taskId) {
-    const task = state.list.find(task => task.id === taskId)
-    if (task) {
-      task.completed = !task.completed
-    }
+  SET_LOADING(state, status) {
+    state.loading = status
+  },
+  SET_ERROR(state, error) {
+    state.error = error
   }
 }
 
 const actions = {
-  // Initialize tasks from localStorage
-  initTasks({ commit }) {
-    const savedTasks = localStorage.getItem('tasks')
-    if (savedTasks) {
-      commit('SET_TASKS', JSON.parse(savedTasks))
+  async initTasks({ dispatch, rootGetters }) {
+    try {
+      const token = rootGetters['auth/token']
+      if (token) {
+        await dispatch('fetchTasks')
+      } else {
+        console.log('No authentication token available')
+      }
+    } catch (error) {
+      console.error('Error initializing tasks:', error)
     }
   },
 
-  // Save tasks to localStorage after each mutation
-  saveTasks({ state }) {
-    localStorage.setItem('tasks', JSON.stringify(state.list))
+  async fetchTasks({ commit, rootGetters }) {
+    commit('SET_LOADING', true)
+    try {
+      const token = rootGetters['auth/token']
+      const response = await axios.get('http://localhost:5000/api/tasks', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      commit('SET_TASKS', response.data.data || [])
+    } catch (error) {
+      commit('SET_ERROR', error.message)
+      throw error
+    } finally {
+      commit('SET_LOADING', false)
+    }
   },
 
-  // Add a new task
-  addTask({ commit, dispatch }, task) {
-    commit('ADD_TASK', task)
-    dispatch('saveTasks')
+  async addTask({ commit, rootGetters }, taskData) {
+    try {
+      const token = rootGetters['auth/token']
+      const response = await axios.post('http://localhost:5000/api/tasks', taskData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      const newTask = { ...taskData, id: response.data.taskId }
+      commit('ADD_TASK', newTask)
+      return newTask
+    } catch (error) {
+      commit('SET_ERROR', error.message)
+      throw error
+    }
   },
 
-  // Update an existing task
-  updateTask({ commit, dispatch }, task) {
-    commit('UPDATE_TASK', task)
-    dispatch('saveTasks')
+  async updateTask({ commit, rootGetters }, taskData) {
+    try {
+      const token = rootGetters['auth/token']
+      await axios.put(`http://localhost:5000/api/tasks/${taskData.id}`, taskData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      commit('UPDATE_TASK', taskData)
+    } catch (error) {
+      commit('SET_ERROR', error.message)
+      throw error
+    }
   },
 
-  // Delete a task
-  deleteTask({ commit, dispatch }, taskId) {
-    commit('DELETE_TASK', taskId)
-    dispatch('saveTasks')
+  async deleteTask({ commit, rootGetters }, taskId) {
+    try {
+      const token = rootGetters['auth/token']
+      await axios.delete(`http://localhost:5000/api/tasks/${taskId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      commit('DELETE_TASK', taskId)
+    } catch (error) {
+      commit('SET_ERROR', error.message)
+      throw error
+    }
   },
 
-  // Toggle task completion status
-  toggleTaskStatus({ commit, dispatch }, taskId) {
-    commit('TOGGLE_TASK_STATUS', taskId)
-    dispatch('saveTasks')
+  async toggleTaskStatus({ commit, state, rootGetters }, taskId) {
+    try {
+      const task = state.list.find(t => t.id === taskId)
+      if (task && !task.completed) {
+        await axios.put(`http://localhost:5000/api/tasks/${taskId}/toggle`, {}, {
+          headers: {
+            Authorization: `Bearer ${rootGetters['auth/token']}`
+          }
+        })
+        const updatedTask = { ...task, completed: true }
+        commit('UPDATE_TASK', updatedTask)
+      }
+    } catch (error) {
+      commit('SET_ERROR', error.message)
+      throw error
+    }
   }
 }
 
 const getters = {
-  // Get all tasks
   allTasks: state => state.list,
-  
-  // Get tasks by completion status
-  completedTasks: state => state.list.filter(task => task.completed),
-  pendingTasks: state => state.list.filter(task => !task.completed),
-  
-  // Get tasks by priority
-  tasksByPriority: state => priority => 
-    state.list.filter(task => task.priority === priority),
-  
-  // Get tasks by category
-  tasksByCategory: state => category => 
-    state.list.filter(task => task.category === category)
+  taskById: state => id => state.list.find(task => task.id === id),
+  loading: state => state.loading,
+  error: state => state.error
 }
 
 export default {

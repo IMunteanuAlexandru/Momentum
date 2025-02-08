@@ -1,172 +1,440 @@
 <template>
   <div class="notes-container">
-    <header class="page-header">
-      <h1>Notes</h1>
-      <button class="add-note-btn" @click="createNote">
-        <i class="fas fa-plus"></i>
-        Add Note
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state">
+      <span class="loading-spinner">⌛</span>
+      <p>Se încarcă notițele...</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <p>{{ error }}</p>
+      <button @click="loadNotes" class="btn-retry">
+        <span class="icon">🔄</span>
+        Încearcă din nou
       </button>
-    </header>
-    
-    <div class="notes-grid">
-      <!-- Note Editor -->
-      <div v-if="activeNote" class="note-editor">
-        <input 
-          v-model="activeNote.title" 
-          class="note-title" 
-          placeholder="Note Title"
-          @input="updateNote"
-        >
-        <textarea 
-          v-model="activeNote.content" 
-          class="note-content" 
-          placeholder="Write your note here..."
-          @input="updateNote"
-        ></textarea>
-        <div class="editor-footer">
-          <span class="last-updated">Last updated: {{ formatDate(activeNote.updatedAt) }}</span>
-          <button class="delete-note-btn" @click="deleteNote(activeNote.id)">
-            <i class="fas fa-trash"></i>
-            Delete
-          </button>
+    </div>
+
+    <!-- Notes Content -->
+    <div v-else class="notes-content">
+      <!-- Header -->
+      <div class="notes-header">
+        <div class="search-filter">
+          <div class="search-input">
+            <span class="icon">🔍</span>
+            <input 
+              v-model="searchQuery"
+              type="text"
+              placeholder="Caută notițe..."
+            >
+          </div>
+          <select v-model="selectedCategory">
+            <option 
+              v-for="category in categories"
+              :key="category.value"
+              :value="category.value"
+            >
+              {{ category.label }}
+            </option>
+          </select>
         </div>
+        <button @click="showAddNoteModal = true" class="btn-add">
+          <span class="icon">➕</span>
+          Adaugă notiță
+        </button>
       </div>
 
-      <!-- Notes List -->
-      <div class="notes-list">
-        <div 
-          v-for="note in sortedNotes" 
-          :key="note.id"
-          class="note-card"
-          :class="{ active: activeNote?.id === note.id }"
-          @click="selectNote(note)"
-        >
-          <h3>{{ note.title || 'Untitled Note' }}</h3>
-          <p>{{ truncateContent(note.content) }}</p>
-          <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
+      <!-- Notes Grid -->
+      <div class="notes-grid">
+        <!-- Note Editor -->
+        <div v-if="activeNote" class="note-editor">
+          <div class="editor-header">
+            <input 
+              v-model="activeNote.title"
+              class="note-title"
+              placeholder="Titlu notiță"
+              @input="updateNote"
+            >
+            <div class="editor-actions">
+              <button 
+                @click="togglePin(activeNote)"
+                class="btn-pin"
+                :class="{ active: activeNote.pinned }"
+              >
+                📌
+              </button>
+              <select 
+                v-model="activeNote.category"
+                @change="updateNote"
+                class="category-select"
+              >
+                <option value="work">Muncă</option>
+                <option value="personal">Personal</option>
+                <option value="learning">Învățare</option>
+              </select>
+              <button 
+                @click="deleteNote(activeNote.id)"
+                class="btn-delete"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+          <textarea
+            v-model="activeNote.content"
+            class="note-content"
+            placeholder="Scrie notița ta aici..."
+            @input="updateNote"
+          ></textarea>
+          <div class="editor-footer">
+            <span class="last-updated">
+              Ultima actualizare: {{ formatDate(activeNote.updatedAt) }}
+            </span>
+          </div>
         </div>
+
+        <!-- Notes List -->
+        <div class="notes-list">
+          <div
+            v-for="note in filteredNotes"
+            :key="note.id"
+            class="note-card"
+            :class="{
+              active: activeNote?.id === note.id,
+              pinned: note.pinned
+            }"
+            @click="selectNote(note)"
+          >
+            <div class="note-card-header">
+              <h3>{{ note.title || 'Notiță fără titlu' }}</h3>
+              <span v-if="note.pinned" class="pin-indicator">📌</span>
+            </div>
+            <p class="note-preview">{{ note.content }}</p>
+            <div class="note-card-footer">
+              <span class="note-category" :class="note.category">
+                {{ categories.find(c => c.value === note.category)?.label }}
+              </span>
+              <span class="note-date">
+                {{ formatDate(note.updatedAt) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Note Modal -->
+    <div v-if="showAddNoteModal" class="modal">
+      <div class="modal-content">
+        <h2>Adaugă notiță nouă</h2>
+        <form @submit.prevent="createNote">
+          <div class="form-group">
+            <label>Titlu</label>
+            <input v-model="newNote.title" required>
+          </div>
+          <div class="form-group">
+            <label>Conținut</label>
+            <textarea v-model="newNote.content" required></textarea>
+          </div>
+          <div class="form-group">
+            <label>Categorie</label>
+            <select v-model="newNote.category">
+              <option value="work">Muncă</option>
+              <option value="personal">Personal</option>
+              <option value="learning">Învățare</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="newNote.pinned">
+              Fixează notița
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn-save">Salvează</button>
+            <button 
+              type="button"
+              @click="showAddNoteModal = false"
+              class="btn-cancel"
+            >
+              Anulează
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script>
+import { ref, computed, onMounted } from 'vue'
+import { useStore } from 'vuex'
 
-const notes = ref([
-  {
-    id: 1,
-    title: 'Welcome Note',
-    content: 'Welcome to your notes! Click the "Add Note" button to create a new note.',
-    createdAt: new Date(),
-    updatedAt: new Date()
+export default {
+  name: 'Notes',
+  setup() {
+    const store = useStore()
+    const activeNote = ref(null)
+    const isLoading = ref(true)
+    const error = ref(null)
+    const searchQuery = ref('')
+    const selectedCategory = ref('all')
+    const showAddNoteModal = ref(false)
+
+    const categories = [
+      { value: 'all', label: 'Toate notițele' },
+      { value: 'work', label: 'Muncă' },
+      { value: 'personal', label: 'Personal' },
+      { value: 'learning', label: 'Învățare' }
+    ]
+
+    const newNote = ref({
+      title: '',
+      content: '',
+      category: 'personal',
+      pinned: false
+    })
+
+    // Computed properties
+    const filteredNotes = computed(() => {
+      let notes = store.getters['notes/allNotes']
+      
+      // Filtrare după categorie
+      if (selectedCategory.value !== 'all') {
+        notes = notes.filter(note => note.category === selectedCategory.value)
+      }
+      
+      // Filtrare după text căutat
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        notes = notes.filter(note => 
+          note.title.toLowerCase().includes(query) ||
+          note.content.toLowerCase().includes(query)
+        )
+      }
+      
+      // Sortare: mai întâi notițele pinned, apoi după data actualizării
+      return notes.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1
+        if (!a.pinned && b.pinned) return 1
+        return new Date(b.updatedAt) - new Date(a.updatedAt)
+      })
+    })
+
+    // Methods
+    const loadNotes = async () => {
+      isLoading.value = true
+      error.value = null
+      try {
+        await store.dispatch('notes/fetchNotes')
+        isLoading.value = false
+      } catch (err) {
+        console.error('Error loading notes:', err)
+        error.value = 'Eroare la încărcarea notițelor'
+        isLoading.value = false
+      }
+    }
+
+    const createNote = async () => {
+      try {
+        const note = await store.dispatch('notes/addNote', {
+          ...newNote.value,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        activeNote.value = note
+        showAddNoteModal.value = false
+        resetNewNote()
+        store.dispatch('notifications/add', {
+          type: 'success',
+          message: 'Notița a fost creată cu succes'
+        })
+      } catch (error) {
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la crearea notiței'
+        })
+      }
+    }
+
+    const updateNote = async () => {
+      if (!activeNote.value) return
+      
+      try {
+        await store.dispatch('notes/updateNote', {
+          ...activeNote.value,
+          updatedAt: new Date().toISOString()
+        })
+        store.dispatch('notifications/add', {
+          type: 'success',
+          message: 'Notița a fost actualizată cu succes'
+        })
+      } catch (error) {
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la actualizarea notiței'
+        })
+      }
+    }
+
+    const deleteNote = async (id) => {
+      if (!confirm('Ești sigur că vrei să ștergi această notiță?')) return
+      
+      try {
+        await store.dispatch('notes/deleteNote', id)
+        if (activeNote.value?.id === id) {
+          activeNote.value = null
+        }
+        store.dispatch('notifications/add', {
+          type: 'success',
+          message: 'Notița a fost ștearsă cu succes'
+        })
+      } catch (error) {
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la ștergerea notiței'
+        })
+      }
+    }
+
+    const togglePin = async (note) => {
+      try {
+        await store.dispatch('notes/updateNote', {
+          ...note,
+          pinned: !note.pinned,
+          updatedAt: new Date().toISOString()
+        })
+      } catch (error) {
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la actualizarea notiței'
+        })
+      }
+    }
+
+    const selectNote = (note) => {
+      activeNote.value = { ...note }
+    }
+
+    const resetNewNote = () => {
+      newNote.value = {
+        title: '',
+        content: '',
+        category: 'personal',
+        pinned: false
+      }
+    }
+
+    const formatDate = (date) => {
+      return new Date(date).toLocaleString('ro-RO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+
+    onMounted(() => {
+      loadNotes()
+    })
+
+    return {
+      activeNote,
+      isLoading,
+      error,
+      searchQuery,
+      selectedCategory,
+      categories,
+      filteredNotes,
+      showAddNoteModal,
+      newNote,
+      createNote,
+      updateNote,
+      deleteNote,
+      togglePin,
+      selectNote,
+      formatDate,
+      resetNewNote
+    }
   }
-])
-
-const activeNote = ref(null)
-
-// Select first note by default
-if (notes.value.length > 0 && !activeNote.value) {
-  activeNote.value = { ...notes.value[0] }
-}
-
-const sortedNotes = computed(() => {
-  return [...notes.value].sort((a, b) => b.updatedAt - a.updatedAt)
-})
-
-const createNote = () => {
-  const newNote = {
-    id: Date.now(),
-    title: '',
-    content: '',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-  notes.value.unshift(newNote)
-  activeNote.value = { ...newNote }
-}
-
-const selectNote = (note) => {
-  activeNote.value = { ...note }
-}
-
-const updateNote = () => {
-  if (!activeNote.value) return
-  
-  activeNote.value.updatedAt = new Date()
-  const index = notes.value.findIndex(n => n.id === activeNote.value.id)
-  if (index !== -1) {
-    notes.value[index] = { ...activeNote.value }
-  }
-}
-
-const deleteNote = (id) => {
-  const index = notes.value.findIndex(n => n.id === id)
-  if (index !== -1) {
-    notes.value.splice(index, 1)
-    activeNote.value = notes.value.length > 0 ? { ...notes.value[0] } : null
-  }
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const truncateContent = (content) => {
-  return content.length > 100 ? content.slice(0, 100) + '...' : content
 }
 </script>
 
 <style scoped>
 .notes-container {
   padding: 1.5rem;
+  height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
 }
 
-.page-header {
+.notes-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
-h1 {
+.search-filter {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  max-width: 600px;
+}
+
+.search-input {
+  position: relative;
+  flex: 1;
+}
+
+.search-input input {
+  width: 100%;
+  padding: 0.75rem 2.5rem;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--background);
   color: var(--text);
-  font-size: 2rem;
-  font-weight: 600;
 }
 
-.add-note-btn {
+.search-input .icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+select {
+  padding: 0.75rem;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--text);
+  min-width: 150px;
+}
+
+.btn-add {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background-color: var(--secondary);
+  background: var(--secondary);
   color: var(--text);
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-}
-
-.add-note-btn:hover {
-  opacity: 0.9;
 }
 
 .notes-grid {
   display: grid;
   grid-template-columns: 1fr 300px;
-  gap: 2rem;
-  height: calc(100vh - 150px);
+  gap: 1.5rem;
+  flex: 1;
+  overflow: hidden;
 }
 
 .note-editor {
-  background-color: var(--primary);
+  background: var(--primary);
   border-radius: 12px;
   padding: 1.5rem;
   display: flex;
@@ -174,108 +442,266 @@ h1 {
   gap: 1rem;
 }
 
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
 .note-title {
+  flex: 1;
   font-size: 1.5rem;
   font-weight: 600;
   border: none;
   background: none;
   color: var(--text);
-  width: 100%;
   padding: 0.5rem;
-  border-radius: 4px;
 }
 
-.note-title:focus {
-  outline: none;
-  background-color: var(--background);
+.editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-pin,
+.btn-delete {
+  padding: 0.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.btn-pin.active,
+.btn-pin:hover,
+.btn-delete:hover {
+  opacity: 1;
 }
 
 .note-content {
   flex: 1;
+  resize: none;
   border: none;
   background: none;
   color: var(--text);
-  resize: none;
   font-size: 1rem;
   line-height: 1.6;
   padding: 0.5rem;
-  border-radius: 4px;
-}
-
-.note-content:focus {
-  outline: none;
-  background-color: var(--background);
 }
 
 .editor-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 1rem;
-  border-top: 1px solid var(--secondary);
-}
-
-.last-updated {
   color: var(--text);
   opacity: 0.7;
   font-size: 0.875rem;
-}
-
-.delete-note-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: opacity 0.2s;
-}
-
-.delete-note-btn:hover {
-  opacity: 0.9;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--secondary);
 }
 
 .notes-list {
-  background-color: var(--primary);
+  background: var(--primary);
   border-radius: 12px;
   padding: 1rem;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .note-card {
-  padding: 1rem;
+  background: var(--background);
   border-radius: 8px;
+  padding: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-bottom: 1rem;
 }
 
-.note-card:hover, .note-card.active {
-  background-color: var(--secondary);
+.note-card:hover,
+.note-card.active {
+  background: var(--secondary);
 }
 
-.note-card h3 {
-  color: var(--text);
-  font-size: 1.1rem;
+.note-card.pinned {
+  border-left: 3px solid var(--primary);
+}
+
+.note-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
 }
 
-.note-card p {
+.note-card h3 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--text);
+}
+
+.pin-indicator {
+  opacity: 0.7;
+}
+
+.note-preview {
   color: var(--text);
   opacity: 0.8;
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
-  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.note-category {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.note-category.work {
+  background: rgba(25, 118, 210, 0.1);
+  color: #1976d2;
+}
+
+.note-category.personal {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.note-category.learning {
+  background: rgba(156, 39, 176, 0.1);
+  color: #9c27b0;
 }
 
 .note-date {
   color: var(--text);
   opacity: 0.7;
-  font-size: 0.8rem;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--primary);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 500px;
+  max-width: 90%;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--secondary);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--text);
+}
+
+.form-group textarea {
+  height: 150px;
+  resize: vertical;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-save,
+.btn-cancel {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-save {
+  background: var(--secondary);
+  color: var(--text);
+}
+
+.btn-cancel {
+  background: var(--primary);
+  color: var(--text);
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+}
+
+.btn-retry {
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--secondary);
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
@@ -283,12 +709,18 @@ h1 {
     grid-template-columns: 1fr;
   }
   
-  .note-editor {
-    height: 60vh;
+  .search-filter {
+    flex-direction: column;
   }
   
-  .notes-list {
-    height: 40vh;
+  .notes-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .btn-add {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style> 

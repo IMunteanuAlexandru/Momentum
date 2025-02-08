@@ -10,7 +10,7 @@
       <div class="export-card">
         <div class="card-header">
           <div class="icon-wrapper tasks">
-            <i class="fas fa-tasks"></i>
+            <span class="icon">📋</span>
           </div>
           <h2>Export Sarcini</h2>
         </div>
@@ -51,7 +51,7 @@
             </label>
           </div>
           <button @click="exportTasks" class="btn-export">
-            <i class="fas fa-download"></i>
+            <span class="icon">⬇️</span>
             Exportă Sarcini
           </button>
         </div>
@@ -61,7 +61,7 @@
       <div class="export-card">
         <div class="card-header">
           <div class="icon-wrapper calendar">
-            <i class="fas fa-calendar"></i>
+            <span class="icon">📅</span>
           </div>
           <h2>Export Calendar</h2>
         </div>
@@ -109,7 +109,7 @@
             </div>
           </div>
           <button @click="exportCalendar" class="btn-export">
-            <i class="fas fa-download"></i>
+            <span class="icon">⬇️</span>
             Exportă Evenimente
           </button>
         </div>
@@ -119,7 +119,7 @@
       <div class="export-card">
         <div class="card-header">
           <div class="icon-wrapper notes">
-            <i class="fas fa-sticky-note"></i>
+            <span class="icon">📝</span>
           </div>
           <h2>Export Notițe</h2>
         </div>
@@ -160,7 +160,7 @@
             </label>
           </div>
           <button @click="exportNotes" class="btn-export">
-            <i class="fas fa-download"></i>
+            <span class="icon">⬇️</span>
             Exportă Notițe
           </button>
         </div>
@@ -645,5 +645,10 @@ export default {
   .format-btn {
     padding: 0.6rem 1.2rem;
   }
+}
+
+.icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
 }
 </style> 

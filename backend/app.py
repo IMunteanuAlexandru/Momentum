@@ -6,6 +6,9 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from functools import wraps
 from datetime import datetime, timedelta
+import schedule
+import time
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -25,13 +28,27 @@ def check_token(f):
     @wraps(f)
     def wrap(*args, **kwargs):
         if not request.headers.get('Authorization'):
-            return {'message': 'No token provided'}, 401
+            return jsonify({
+                'status': 'error',
+                'message': 'No token provided'
+            }), 401
         try:
-            token = request.headers['Authorization'].split('Bearer ')[1]
+            auth_header = request.headers['Authorization']
+            if not auth_header.startswith('Bearer '):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Invalid token format'
+                }), 401
+                
+            token = auth_header.split('Bearer ')[1]
             user = auth.verify_id_token(token)
             request.user = user
-        except:
-            return {'message': 'Invalid token provided'}, 401
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid token provided',
+                'error': str(e)
+            }), 401
         return f(*args, **kwargs)
     return wrap
 
@@ -190,71 +207,519 @@ def get_dashboard_overview():
     try:
         user_id = request.user['uid']
         
-        # Get user data including last login
-        user_doc = db.collection('users').document(user_id).get()
-        if not user_doc.exists:
-            return jsonify({
-                'status': 'error',
-                'message': 'User not found'
-            }), 404
-            
-        user_data = user_doc.to_dict()
-        
-        # Get recent tasks
-        tasks_ref = db.collection('tasks').where('userId', '==', user_id).order_by('createdAt', direction=firestore.Query.DESCENDING).limit(5)
+        # Get user's tasks
+        tasks_ref = db.collection('tasks').where('userId', '==', user_id).order_by('createdAt', direction=firestore.Query.DESCENDING).stream()
         tasks = []
-        for task in tasks_ref.stream():
+        completed_count = 0
+        in_progress_count = 0
+        upcoming_count = 0
+        
+        for task in tasks_ref:
             task_data = task.to_dict()
+            task_data['id'] = task.id
+            
+            # Add task to recent tasks list
             tasks.append({
                 'id': task.id,
-                'title': task_data.get('title'),
-                'status': task_data.get('status'),
-                'dueDate': task_data.get('dueDate')
+                'title': task_data.get('title', ''),
+                'description': task_data.get('description', ''),
+                'status': task_data.get('status', 'pending'),
+                'dueDate': task_data.get('dueDate', ''),
+                'priority': task_data.get('priority', 'medium'),
+                'category': task_data.get('category', 'Altele'),
+                'completed': task_data.get('completed', False)
             })
             
-        # Get today's events
-        today = datetime.now().date()
-        tomorrow = today + timedelta(days=1)
-        events_ref = db.collection('events').where('userId', '==', user_id).where('startTime', '>=', today).where('startTime', '<', tomorrow).order_by('startTime')
-        events = []
-        for event in events_ref.stream():
-            event_data = event.to_dict()
-            events.append({
-                'id': event.id,
-                'title': event_data.get('title'),
-                'startTime': event_data.get('startTime')
-            })
-            
-        # Get task statistics
-        tasks_ref = db.collection('tasks').where('userId', '==', user_id)
-        completed = 0
-        in_progress = 0
-        upcoming = 0
-        
-        for task in tasks_ref.stream():
-            task_data = task.to_dict()
-            status = task_data.get('status')
-            if status == 'completed':
-                completed += 1
-            elif status == 'in-progress':
-                in_progress += 1
+            # Update counters
+            if task_data.get('completed', False):
+                completed_count += 1
+            elif task_data.get('status') == 'in-progress':
+                in_progress_count += 1
             else:
-                upcoming += 1
+                upcoming_count += 1
+        
+        # Sort tasks by due date and get recent ones
+        recent_tasks = sorted(tasks, key=lambda x: x.get('dueDate', ''), reverse=True)[:5] if tasks else []
+        
+        # Get user data
+        user_doc = db.collection('users').document(user_id).get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
                 
         return jsonify({
             'status': 'success',
             'data': {
-                'lastLogin': user_data.get('lastLogin'),
-                'recentTasks': tasks,
-                'todayEvents': events,
+                'recentTasks': recent_tasks,
+                'lastLogin': user_data.get('lastLogin', ''),
                 'stats': {
-                    'completedTasks': completed,
-                    'inProgressTasks': in_progress,
-                    'upcomingTasks': upcoming
+                    'completedTasks': completed_count,
+                    'inProgressTasks': in_progress_count,
+                    'upcomingTasks': upcoming_count
                 }
             }
         })
+    except Exception as e:
+        print(f"Error in dashboard overview: {str(e)}")  # Add debug logging
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch dashboard data',
+            'error': str(e)
+        }), 500
+
+@app.route('/api/tasks', methods=['GET'])
+@check_token
+def get_tasks():
+    try:
+        user_id = request.user['uid']
+        tasks_ref = db.collection('tasks').where('userId', '==', user_id).stream()
+        tasks = []
         
+        for task in tasks_ref:
+            task_data = task.to_dict()
+            task_data['id'] = task.id
+            tasks.append(task_data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': tasks
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/tasks', methods=['POST'])
+@check_token
+def create_task():
+    try:
+        user_id = request.user['uid']
+        task_data = request.json
+        task_data['userId'] = user_id
+        task_data['createdAt'] = firestore.SERVER_TIMESTAMP
+        task_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+        
+        task_ref = db.collection('tasks').document()
+        task_ref.set(task_data)
+        
+        return jsonify({
+            'status': 'success',
+            'taskId': task_ref.id
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/tasks/<task_id>', methods=['PUT'])
+@check_token
+def update_task(task_id):
+    try:
+        user_id = request.user['uid']
+        task_ref = db.collection('tasks').document(task_id)
+        task = task_ref.get()
+        
+        if not task.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Task not found'
+            }), 404
+            
+        if task.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+            
+        task_data = request.json
+        task_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+        task_ref.update(task_data)
+        
+        return jsonify({
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/tasks/<task_id>', methods=['DELETE'])
+@check_token
+def delete_task(task_id):
+    try:
+        user_id = request.user['uid']
+        task_ref = db.collection('tasks').document(task_id)
+        task = task_ref.get()
+        
+        if not task.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Task not found'
+            }), 404
+            
+        if task.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+            
+        task_ref.delete()
+        
+        return jsonify({
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/goals', methods=['POST'])
+@check_token
+def set_goal():
+    try:
+        user_id = request.user['uid']
+        data = request.json
+        
+        goal_data = {
+            'userId': user_id,
+            'title': data.get('title'),
+            'description': data.get('description'),
+            'targetDate': data.get('targetDate'),
+            'status': 'active',
+            'progress': 0,
+            'createdAt': firestore.SERVER_TIMESTAMP,
+            'updatedAt': firestore.SERVER_TIMESTAMP
+        }
+        
+        goal_ref = db.collection('goals').add(goal_data)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Goal created successfully',
+            'goalId': goal_ref[1].id
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/reminders', methods=['POST'])
+@check_token
+def create_reminder():
+    try:
+        user_id = request.user['uid']
+        data = request.json
+        
+        reminder_data = {
+            'userId': user_id,
+            'title': data.get('title'),
+            'description': data.get('description'),
+            'reminderDate': data.get('reminderDate'),
+            'status': 'active',
+            'createdAt': firestore.SERVER_TIMESTAMP
+        }
+        
+        reminder_ref = db.collection('reminders').add(reminder_data)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Reminder created successfully',
+            'reminderId': reminder_ref[1].id
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/notes', methods=['GET'])
+@check_token
+def get_notes():
+    try:
+        user_id = request.user['uid']
+        notes_ref = db.collection('notes').where('userId', '==', user_id).stream()
+        notes = []
+        
+        for note in notes_ref:
+            note_data = note.to_dict()
+            note_data['id'] = note.id
+            notes.append(note_data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': notes
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/notes', methods=['POST'])
+@check_token
+def create_note():
+    try:
+        user_id = request.user['uid']
+        note_data = request.json
+        note_data['userId'] = user_id
+        note_data['createdAt'] = firestore.SERVER_TIMESTAMP
+        note_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+        
+        note_ref = db.collection('notes').document()
+        note_ref.set(note_data)
+        
+        return jsonify({
+            'status': 'success',
+            'noteId': note_ref.id
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/notes/<note_id>', methods=['PUT'])
+@check_token
+def update_note(note_id):
+    try:
+        user_id = request.user['uid']
+        note_ref = db.collection('notes').document(note_id)
+        note = note_ref.get()
+        
+        if not note.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Note not found'
+            }), 404
+            
+        if note.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+            
+        note_data = request.json
+        note_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+        note_ref.update(note_data)
+        
+        return jsonify({
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/notes/<note_id>', methods=['DELETE'])
+@check_token
+def delete_note(note_id):
+    try:
+        user_id = request.user['uid']
+        note_ref = db.collection('notes').document(note_id)
+        note = note_ref.get()
+        
+        if not note.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Note not found'
+            }), 404
+            
+        if note.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+            
+        note_ref.delete()
+        
+        return jsonify({
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+def clean_completed_tasks():
+    try:
+        # Get all completed tasks
+        completed_tasks = db.collection('tasks').where('completed', '==', True).stream()
+        
+        # Delete each completed task
+        for task in completed_tasks:
+            task.reference.delete()
+            
+        print(f"Cleaned completed tasks at {datetime.now()}")
+    except Exception as e:
+        print(f"Error cleaning completed tasks: {str(e)}")
+
+def run_scheduler():
+    # Schedule the cleanup for every Sunday at 23:59:59
+    schedule.every().sunday.at("23:59:59").do(clean_completed_tasks)
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # Check every minute
+
+# Start the scheduler in a separate thread
+scheduler_thread = threading.Thread(target=run_scheduler)
+scheduler_thread.daemon = True
+scheduler_thread.start()
+
+@app.route('/api/tasks/<task_id>/toggle', methods=['PUT'])
+@check_token
+def toggle_task_status(task_id):
+    try:
+        user_id = request.user['uid']
+        task_ref = db.collection('tasks').document(task_id)
+        task = task_ref.get()
+        
+        if not task.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Task not found'
+            }), 404
+            
+        if task.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+        
+        # Only allow marking as completed, not uncompleting
+        current_status = task.to_dict().get('completed', False)
+        if current_status:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot unmark a completed task'
+            }), 400
+            
+        task_ref.update({
+            'completed': True,
+            'completedAt': firestore.SERVER_TIMESTAMP
+        })
+        
+        return jsonify({
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/events', methods=['GET'])
+@check_token
+def get_events():
+    try:
+        user_id = request.user['uid']
+        events_ref = db.collection('events').where('userId', '==', user_id).stream()
+        events = []
+        
+        for event in events_ref:
+            event_data = event.to_dict()
+            event_data['id'] = event.id
+            events.append(event_data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': events
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/events', methods=['POST'])
+@check_token
+def create_event():
+    try:
+        user_id = request.user['uid']
+        event_data = request.json
+        event_data['userId'] = user_id
+        event_data['createdAt'] = firestore.SERVER_TIMESTAMP
+        event_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+        
+        # Add the event to Firestore
+        event_ref = db.collection('events').document()
+        event_ref.set(event_data)
+        
+        return jsonify({
+            'status': 'success',
+            'eventId': event_ref.id
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/events/<event_id>', methods=['PUT'])
+@check_token
+def update_event(event_id):
+    try:
+        user_id = request.user['uid']
+        event_ref = db.collection('events').document(event_id)
+        event = event_ref.get()
+        
+        if not event.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Event not found'
+            }), 404
+            
+        if event.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+            
+        event_data = request.json
+        event_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+        event_ref.update(event_data)
+        
+        return jsonify({
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
+@app.route('/api/events/<event_id>', methods=['DELETE'])
+@check_token
+def delete_event(event_id):
+    try:
+        user_id = request.user['uid']
+        event_ref = db.collection('events').document(event_id)
+        event = event_ref.get()
+        
+        if not event.exists:
+            return jsonify({
+                'status': 'error',
+                'message': 'Event not found'
+            }), 404
+            
+        if event.to_dict().get('userId') != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+            
+        event_ref.delete()
+        
+        return jsonify({
+            'status': 'success'
+        })
     except Exception as e:
         return jsonify({
             'status': 'error',
