@@ -9,7 +9,6 @@
           <option value="year">Last Year</option>
         </select>
         <button class="generate-report-btn" @click="generateReport">
-          <i class="fas fa-download"></i>
           Generate Report
         </button>
       </div>
@@ -19,44 +18,35 @@
       <!-- Summary Cards -->
       <div class="summary-cards">
         <div class="stat-card">
-          <div class="stat-icon completed">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div class="stat-info">
-            <h3>Completed Tasks</h3>
-            <div class="stat-value">{{ stats.completed }}</div>
-            <div class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i>
-              +{{ stats.completedTrend }}%
-            </div>
+          <span class="icon"></span>
+          <h3>Total Tasks</h3>
+          <div class="stat-value">{{ stats.totalTasks }}</div>
+        </div>
+
+        <div class="stat-card">
+          <span class="icon">✅</span>
+          <h3>Completed Tasks</h3>
+          <div class="stat-value">
+            {{ stats.completedTasks }}
+            <span class="trend up">⬆️</span>
           </div>
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon pending">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="stat-info">
-            <h3>Pending Tasks</h3>
-            <div class="stat-value">{{ stats.pending }}</div>
-            <div class="stat-trend negative">
-              <i class="fas fa-arrow-down"></i>
-              -{{ stats.pendingTrend }}%
-            </div>
+          <span class="icon">⏰</span>
+          <h3>Pending Tasks</h3>
+          <div class="stat-value">
+            {{ stats.pendingTasks }}
+            <span class="trend down">⬇️</span>
           </div>
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon productivity">
-            <i class="fas fa-chart-line"></i>
-          </div>
-          <div class="stat-info">
-            <h3>Productivity</h3>
-            <div class="stat-value">{{ stats.productivity }}%</div>
-            <div class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i>
-              +{{ stats.productivityTrend }}%
-            </div>
+          <span class="icon">📈</span>
+          <h3>Productivity Score</h3>
+          <div class="stat-value">
+            {{ stats.productivityScore }}%
+            <span class="trend up">⬆️</span>
           </div>
         </div>
       </div>
@@ -82,9 +72,7 @@
         <h2>Recent Activity</h2>
         <div class="activity-list">
           <div v-for="activity in recentActivity" :key="activity.id" class="activity-item">
-            <div class="activity-icon" :class="activity.type">
-              <i :class="activity.icon"></i>
-            </div>
+            <span class="icon">{{ getActivityIcon(activity.type) }}</span>
             <div class="activity-content">
               <p>{{ activity.description }}</p>
               <span class="activity-time">{{ activity.time }}</span>
@@ -103,12 +91,10 @@ const timeRange = ref('week')
 
 // Mock data
 const stats = ref({
-  completed: 24,
-  completedTrend: 15,
-  pending: 8,
-  pendingTrend: 12,
-  productivity: 85,
-  productivityTrend: 8
+  totalTasks: 32,
+  completedTasks: 24,
+  pendingTasks: 8,
+  productivityScore: 85
 })
 
 const progressData = ref([
@@ -124,22 +110,19 @@ const progressData = ref([
 const recentActivity = ref([
   {
     id: 1,
-    type: 'completed',
-    icon: 'fas fa-check-circle',
+    type: 'task_completed',
     description: 'Completed task: Project Planning',
     time: '2 hours ago'
   },
   {
     id: 2,
-    type: 'created',
-    icon: 'fas fa-plus-circle',
+    type: 'task_created',
     description: 'Created new task: Review Documentation',
     time: '4 hours ago'
   },
   {
     id: 3,
-    type: 'updated',
-    icon: 'fas fa-edit',
+    type: 'task_updated',
     description: 'Updated task: Team Meeting Notes',
     time: '6 hours ago'
   }
@@ -148,6 +131,22 @@ const recentActivity = ref([
 const generateReport = () => {
   console.log('Generating report for:', timeRange.value)
   // TODO: Implement report generation
+}
+
+const getActivityIcon = (type) => {
+  const icons = {
+    'task_created': '➕',
+    'task_completed': '✅',
+    'task_updated': '✏️',
+    'task_deleted': '🗑️',
+    'note_created': '📝',
+    'note_updated': '✏️',
+    'note_deleted': '🗑️',
+    'event_created': '📅',
+    'event_updated': '✏️',
+    'event_deleted': '🗑️'
+  }
+  return icons[type] || '❓'
 }
 </script>
 
@@ -223,29 +222,9 @@ h1 {
   gap: 1.5rem;
 }
 
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-}
-
-.stat-icon.completed {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.stat-icon.pending {
-  background-color: #FF9800;
-  color: white;
-}
-
-.stat-icon.productivity {
-  background-color: #2196F3;
-  color: white;
+.icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
 }
 
 .stat-info h3 {
@@ -261,18 +240,18 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
-.stat-trend {
+.trend {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.875rem;
 }
 
-.stat-trend.positive {
+.trend.up {
   color: #4CAF50;
 }
 
-.stat-trend.negative {
+.trend.down {
   color: #F44336;
 }
 
@@ -348,31 +327,6 @@ h1 {
   padding: 1rem;
   background-color: var(--background);
   border-radius: 8px;
-}
-
-.activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-}
-
-.activity-icon.completed {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.activity-icon.created {
-  background-color: #2196F3;
-  color: white;
-}
-
-.activity-icon.updated {
-  background-color: #FF9800;
-  color: white;
 }
 
 .activity-content {

@@ -16,29 +16,29 @@
 
       <div class="nav-links">
         <router-link to="/dashboard/overview" class="nav-link" active-class="active">
-          <i class="fas fa-home"></i>
+          <span class="icon">🏠</span>
           Overview
         </router-link>
         
         <router-link to="/dashboard/tasks" class="nav-link" active-class="active">
-          <i class="fas fa-tasks"></i>
+          <span class="icon">📋</span>
           Tasks
         </router-link>
         
         <router-link to="/dashboard/calendar" class="nav-link" active-class="active">
-          <i class="fas fa-calendar"></i>
+          <span class="icon">📅</span>
           Calendar
         </router-link>
         
         <router-link to="/dashboard/notes" class="nav-link" active-class="active">
-          <i class="fas fa-sticky-note"></i>
+          <span class="icon">📝</span>
           Notes
         </router-link>
       </div>
 
       <div class="sidebar-footer">
         <button @click="handleLogout" class="btn-logout">
-          <i class="fas fa-sign-out-alt"></i>
+          <span class="icon">🚪</span>
           Logout
         </button>
       </div>
@@ -47,18 +47,18 @@
     <main class="main-content">
       <header class="top-bar">
         <div class="search-bar">
-          <i class="fas fa-search"></i>
+          <span class="icon">🔍</span>
           <input type="text" placeholder="Search..." v-model="searchQuery" @input="handleSearch" />
         </div>
 
         <div class="top-bar-actions">
           <button class="btn-icon" @click="toggleNotifications">
-            <i class="fas fa-bell"></i>
+            <span class="icon">🔔</span>
             <span v-if="unreadNotifications" class="notification-badge">{{ unreadNotifications }}</span>
           </button>
           
           <button class="btn-icon" @click="toggleTheme">
-            <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+            <span class="icon">{{ isDarkMode ? '☀️' : '🌙' }}</span>
           </button>
         </div>
       </header>
@@ -352,6 +352,11 @@ export default {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+}
+
+.icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
 }
 
 @media (max-width: 768px) {

@@ -68,6 +68,7 @@
 <script>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
 import { getAuth, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import axios from 'axios'
 
@@ -75,6 +76,7 @@ export default {
   name: 'Register',
   setup() {
     const router = useRouter()
+    const store = useStore()
     const auth = getAuth()
     const googleProvider = new GoogleAuthProvider()
     googleProvider.addScope('profile')
@@ -97,80 +99,33 @@ export default {
       error.value = ''
       
       try {
-        console.log('Starting Google registration...')
-        
-        // Verifică dacă Firebase este inițializat corect
-        if (!auth) {
-          throw new Error('Firebase Auth is not initialized')
-        }
-
-        // Verifică configurația Firebase
-        console.log('Firebase config:', {
-          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
-        })
-
-        // Încearcă autentificarea cu Google
         const result = await signInWithPopup(auth, googleProvider)
-          .catch(error => {
-            console.error('PopUp error:', error)
-            if (error.code === 'auth/popup-blocked') {
-              throw new Error('Please allow popups for this website')
-            }
-            if (error.code === 'auth/cancelled-popup-request') {
-              throw new Error('Authentication cancelled')
-            }
-            throw error
-          })
-
-        if (!result?.user) {
-          throw new Error('No user data received')
-        }
-
-        console.log('Google login successful:', {
+        const token = await result.user.getIdToken()
+        
+        // Store user data in Vuex
+        await store.dispatch('auth/setUser', {
           email: result.user.email,
           displayName: result.user.displayName,
-          uid: result.user.uid
+          photoURL: result.user.photoURL,
+          uid: result.user.uid,
+          token
         })
-        
-        const token = await result.user.getIdToken()
-        console.log('Got ID token')
-        localStorage.setItem('token', token)
 
         // Register with backend
-        console.log('Sending data to backend...')
-        try {
-          const userData = {
-            email: result.user.email,
-            displayName: result.user.displayName,
-            photoURL: result.user.photoURL,
-            uid: result.user.uid
-          }
-          console.log('User data being sent:', userData)
-          
-          const response = await axios.post('http://localhost:5000/api/auth/google', userData)
-          console.log('Backend response:', response.data)
-          
-          if (response.data.status === 'success') {
-            console.log('Registration successful, redirecting to dashboard...')
-            router.push('/dashboard')
-          } else {
-            throw new Error(response.data.message || 'Registration failed')
-          }
-        } catch (backendError) {
-          console.error('Backend error:', backendError)
-          if (backendError.response) {
-            console.error('Backend response:', backendError.response.data)
-            throw new Error(backendError.response.data.message || 'Could not complete registration with backend')
-          }
-          throw new Error('Could not connect to backend')
-        }
+        await axios.post('http://localhost:5000/api/auth/google', {
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          uid: result.user.uid
+        })
+
+        router.push('/dashboard')
       } catch (e) {
-        console.error('Google authentication error:', e)
-        error.value = e.message || 'Google authentication failed'
-        
-        // Curăță token-ul dacă există o eroare
-        localStorage.removeItem('token')
+        console.error('Registration error:', e)
+        error.value = e.message || 'Registration failed'
+        if (auth.currentUser) {
+          await auth.currentUser.delete()
+        }
       } finally {
         loading.value = false
       }
@@ -181,25 +136,43 @@ export default {
       error.value = ''
       
       try {
+        // Create user in Firebase
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           form.value.email,
           form.value.password
         )
 
+        // Update profile with display name
         await updateProfile(userCredential.user, {
           displayName: form.value.displayName
         })
 
-        await axios.post('http://localhost:5000/api/register', {
-          email: form.value.email,
-          password: form.value.password,
-          displayName: form.value.displayName
+        // Get token
+        const token = await userCredential.user.getIdToken()
+
+        // Store user data in Vuex
+        await store.dispatch('auth/setUser', {
+          email: userCredential.user.email,
+          displayName: form.value.displayName,
+          uid: userCredential.user.uid,
+          token
+        })
+
+        // Register with backend
+        await axios.post('http://localhost:5000/api/auth/google', {
+          email: userCredential.user.email,
+          displayName: form.value.displayName,
+          uid: userCredential.user.uid
         })
 
         router.push('/dashboard')
       } catch (e) {
-        error.value = e.message
+        console.error('Registration error:', e)
+        error.value = e.message || 'Registration failed'
+        if (auth.currentUser) {
+          await auth.currentUser.delete()
+        }
       } finally {
         loading.value = false
       }
@@ -260,13 +233,13 @@ export default {
 }
 
 .form-input.error {
-  border-color: var(--energy-primary);
+  border-color: #f44336;
 }
 
 .error-message {
-  color: var(--energy-primary);
+  color: #f44336;
   font-size: 0.875rem;
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .btn-submit {
@@ -276,8 +249,8 @@ export default {
   color: var(--text);
   border: none;
   border-radius: 4px;
+  font-weight: 500;
   cursor: pointer;
-  font-weight: 600;
   transition: opacity 0.2s;
 }
 
@@ -286,9 +259,61 @@ export default {
   cursor: not-allowed;
 }
 
+.btn-submit:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--text);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--primary);
+}
+
+.divider span {
+  padding: 0 1rem;
+}
+
+.btn-google {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--background);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-google:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-google:not(:disabled):hover {
+  background-color: var(--primary);
+}
+
+.btn-google img {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 .auth-link {
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
   color: var(--text);
 }
 
@@ -299,57 +324,5 @@ export default {
 
 .auth-link a:hover {
   text-decoration: underline;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 1.5rem 0;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid var(--primary);
-  opacity: 0.2;
-}
-
-.divider span {
-  padding: 0 1rem;
-  color: var(--text);
-  opacity: 0.7;
-  font-size: 0.875rem;
-}
-
-.btn-google {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: var(--background);
-  color: var(--text);
-  border: 1px solid var(--primary);
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: opacity 0.2s;
-}
-
-.btn-google:hover {
-  opacity: 0.9;
-}
-
-.btn-google:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.btn-google img {
-  width: 18px;
-  height: 18px;
 }
 </style> 

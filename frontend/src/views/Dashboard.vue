@@ -7,16 +7,12 @@
         <div class="time-display">{{ currentTime }}</div>
       </div>
       <nav class="sidebar-nav">
-        <router-link to="/dashboard" class="nav-item active">
-          <span class="nav-icon">📊</span>
-          Overview
-        </router-link>
         <router-link to="/dashboard/tasks" class="nav-item">
           <span class="nav-icon">📝</span>
           Tasks
         </router-link>
         <router-link to="/dashboard/calendar" class="nav-item">
-          <i class="fas fa-calendar">📅</i>
+          <span class="nav-icon">📅</span>
           <span>Calendar</span>
         </router-link>
         <router-link to="/dashboard/notes" class="nav-item">
@@ -24,7 +20,7 @@
           Notes
         </router-link>
         <router-link to="/dashboard/analytics" class="nav-item">
-          <i class="fas fa-chart-line">📈</i>
+          <span class="nav-icon">📈</span>
           <span>Analytics</span>
         </router-link>
         <router-link to="/dashboard/export" class="nav-item">
@@ -32,14 +28,14 @@
           <span>Export</span>
         </router-link>
         <router-link to="/dashboard/settings" class="nav-item">
-          <i class="fas fa-cog">⚙️</i>
+          <span class="nav-icon">⚙️</span>
           <span>Settings</span>
         </router-link>
       </nav>
 
       <div class="sidebar-footer">
         <button @click="handleLogout" class="logout-btn">
-          <i class="fas fa-sign-out-alt"></i>
+          
           <span>Logout</span>
         </button>
       </div>
@@ -207,10 +203,6 @@ onUnmounted(() => {
   .nav-item {
     justify-content: center;
     padding: 0.75rem;
-  }
-
-  .nav-item i {
-    margin: 0;
   }
 
   .logout-btn {

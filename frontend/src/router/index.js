@@ -1,14 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getAuth } from 'firebase/auth'
 import store from '../store'
-import Export from '@/views/dashboard/Export.vue'
 
 // Lazy-loaded components
-const Welcome = () => import('../views/Welcome.vue')
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
-const Settings = () => import('../views/Settings.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
+const Tasks = () => import('../views/dashboard/Tasks.vue')
+const Calendar = () => import('../views/dashboard/Calendar.vue')
+const Notes = () => import('../views/dashboard/Notes.vue')
+const Analytics = () => import('../views/dashboard/Analytics.vue')
+const Export = () => import('../views/dashboard/Export.vue')
+const Settings = () => import('../views/Settings.vue')
 
 const routes = [
   {
@@ -35,32 +38,32 @@ const routes = [
       {
         path: '',
         name: 'Overview',
-        component: () => import('../views/dashboard/Overview.vue')
+        redirect: { name: 'Tasks' }
       },
       {
         path: 'tasks',
         name: 'Tasks',
-        component: () => import('../views/dashboard/Tasks.vue')
+        component: Tasks
       },
       {
         path: 'calendar',
         name: 'Calendar',
-        component: () => import('../views/dashboard/Calendar.vue')
+        component: Calendar
+      },
+      {
+        path: 'notes',
+        name: 'Notes',
+        component: Notes
+      },
+      {
+        path: 'analytics',
+        name: 'Analytics',
+        component: Analytics
       },
       {
         path: 'export',
         name: 'Export',
         component: Export
-      },
-      {
-        path: 'notes',
-        name: 'Notes',
-        component: () => import('../views/dashboard/Notes.vue')
-      },
-      {
-        path: 'analytics',
-        name: 'Analytics',
-        component: () => import('../views/dashboard/Analytics.vue')
       },
       {
         path: 'settings',
@@ -71,7 +74,7 @@ const routes = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/dashboard'
+    redirect: '/login'
   }
 ]
 
@@ -83,25 +86,50 @@ const router = createRouter({
 // Navigation Guards
 router.beforeEach(async (to, from, next) => {
   const auth = getAuth()
-  
-  // Așteaptă inițializarea Firebase Auth
-  await new Promise(resolve => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      unsubscribe()
-      resolve(user)
-    })
-  })
-
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
-  const isAuthenticated = !!auth.currentUser
+  
+  try {
+    // Așteaptă inițializarea Firebase Auth
+    const user = await new Promise(resolve => {
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        unsubscribe()
+        resolve(user)
+      })
+    })
 
-  if (requiresAuth && !isAuthenticated) {
-    next('/login')
-  } else if (requiresGuest && isAuthenticated) {
-    next('/dashboard')
-  } else {
-    next()
+    // Verifică dacă userul este autentificat în Vuex
+    const isAuthenticated = store.getters['auth/isAuthenticated']
+    
+    // Dacă avem user în Firebase dar nu în Vuex, încercăm să-l setăm
+    if (user && !isAuthenticated) {
+      const token = await user.getIdToken()
+      await store.dispatch('auth/setUser', {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        uid: user.uid,
+        token
+      })
+    }
+
+    // Actualizăm starea de autentificare după potențiala setare
+    const finalAuthState = store.getters['auth/isAuthenticated']
+
+    if (requiresAuth && !finalAuthState) {
+      next('/login')
+    } else if (requiresGuest && finalAuthState) {
+      next('/dashboard/tasks')
+    } else {
+      next()
+    }
+  } catch (error) {
+    console.error('Navigation guard error:', error)
+    if (requiresAuth) {
+      next('/login')
+    } else {
+      next()
+    }
   }
 })
 

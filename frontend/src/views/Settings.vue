@@ -10,7 +10,7 @@
       <div class="settings-card">
         <div class="card-header">
           <div class="icon-wrapper appearance">
-            <i class="fas fa-paint-brush"></i>
+            🎨
           </div>
           <h2>Aspect</h2>
         </div>
@@ -37,7 +37,7 @@
       <div class="settings-card">
         <div class="card-header">
           <div class="icon-wrapper notifications">
-            <i class="fas fa-bell"></i>
+            🔔
           </div>
           <h2>Notificări</h2>
         </div>
@@ -67,7 +67,7 @@
       <div class="settings-card">
         <div class="card-header">
           <div class="icon-wrapper time">
-            <i class="fas fa-clock"></i>
+            ⏰
           </div>
           <h2>Timp & Dată</h2>
         </div>
@@ -96,7 +96,7 @@
       <div class="settings-card">
         <div class="card-header">
           <div class="icon-wrapper language">
-            <i class="fas fa-globe"></i>
+            🌍
           </div>
           <h2>Limbă</h2>
         </div>
@@ -114,11 +114,11 @@
 
     <div class="settings-actions">
       <button @click="resetSettings" class="btn-reset">
-        <i class="fas fa-undo"></i>
+        <span class="icon">↺</span>
         Resetează Setările
       </button>
       <button @click="saveSettings" class="btn-save">
-        <i class="fas fa-save"></i>
+        <span class="icon">💾</span>
         Salvează Modificările
       </button>
     </div>
@@ -401,6 +401,11 @@ input:checked + .slider:before {
 .btn-reset:hover, .btn-save:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
 }
 
 @media (max-width: 768px) {

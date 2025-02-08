@@ -3,65 +3,61 @@ import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import Notifications from './components/Notifications.vue'
 
 const store = useStore()
 const router = useRouter()
 const currentTheme = ref('theme-modern')
+const initialized = ref(false)
 const auth = getAuth()
 
-const isAuthenticated = computed(() => !!auth.currentUser)
-const username = computed(() => store.state.auth.user?.username)
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
 
 const setTheme = (theme) => {
   currentTheme.value = theme
   localStorage.setItem('theme', theme)
-  // Refresh the page
-  window.location.reload()
+  document.documentElement.className = theme
 }
 
-const logout = async () => {
-  try {
-    await store.dispatch('auth/logout')
-    router.push('/login')
-  } catch (error) {
-    console.error('Logout error:', error)
-  }
-}
-
-onMounted(() => {
+onMounted(async () => {
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme) {
     currentTheme.value = savedTheme
     document.documentElement.className = savedTheme
   }
-})
 
-// Monitor auth state changes
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    try {
-      const token = await user.getIdToken()
-      await store.dispatch('auth/setUser', {
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        uid: user.uid,
-        token
-      })
-    } catch (error) {
-      console.error('Error setting user:', error)
-      store.dispatch('auth/logout')
+  // Monitor auth state changes
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        const token = await user.getIdToken()
+        await store.dispatch('auth/setUser', {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          uid: user.uid,
+          token
+        })
+      } catch (error) {
+        console.error('Error setting user:', error)
+        await store.dispatch('auth/logout')
+      }
+    } else {
+      await store.dispatch('auth/logout')
     }
-  } else {
-    store.dispatch('auth/logout')
-  }
+    initialized.value = true
+  })
 })
 </script>
 
 <template>
   <div :class="[currentTheme]">
+    <Notifications />
     <main :class="{ 'main-content': !isAuthenticated, 'full-height': isAuthenticated }">
-      <router-view></router-view>
+      <router-view v-if="initialized"></router-view>
+      <div v-else class="loading">
+        <span>Loading...</span>
+      </div>
     </main>
   </div>
 </template>
@@ -76,7 +72,7 @@ onAuthStateChanged(auth, async (user) => {
 
   /* Retro Theme */
   --retro-primary: #423e37ff;
-  --retro-secondary:  #6A8D92;
+  --retro-secondary: #6A8D92;
   --retro-background: #edebd7ff;
   --retro-text: #000;
 
@@ -108,7 +104,7 @@ onAuthStateChanged(auth, async (user) => {
 
 .theme-retro {
   --primary: var(--retro-primary);
-  --secondary: var(--retro-secondary);;
+  --secondary: var(--retro-secondary);
   --background: var(--retro-background);
   --text: var(--retro-text);
 }
@@ -139,6 +135,7 @@ body {
   margin: 0;
   font-family: 'Inter', sans-serif;
   background-color: var(--background);
+  color: var(--text);
 }
 
 /* Hide scrollbar globally */
@@ -156,7 +153,7 @@ body {
 }
 
 .main-content {
-  min-height: calc(100vh - 64px);
+  min-height: 100vh;
   background-color: var(--background);
   color: var(--text);
   overflow-y: auto;
@@ -167,5 +164,14 @@ body {
   background-color: var(--background);
   color: var(--text);
   overflow-y: auto;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 1.2rem;
+  color: var(--text);
 }
 </style>
