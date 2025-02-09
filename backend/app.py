@@ -726,6 +726,97 @@ def delete_event(event_id):
             'message': str(e)
         }), 400
 
+@app.route('/api/analytics', methods=['GET'])
+@check_token
+def get_analytics_data():
+    try:
+        user_id = request.user['uid']
+        time_range = request.args.get('timeRange', 'week')
+        
+        # Calculate the date range
+        now = datetime.now()
+        if time_range == 'week':
+            start_date = now - timedelta(days=7)
+        elif time_range == 'month':
+            start_date = now - timedelta(days=30)
+        else:  # year
+            start_date = now - timedelta(days=365)
+            
+        # Get tasks within the date range
+        tasks_ref = db.collection('tasks').where('userId', '==', user_id).where('createdAt', '>=', start_date).stream()
+        
+        total_tasks = 0
+        completed_tasks = 0
+        pending_tasks = 0
+        
+        # Daily progress data
+        progress_data = {}
+        
+        for task in tasks_ref:
+            task_data = task.to_dict()
+            total_tasks += 1
+            
+            created_date = task_data.get('createdAt').date()
+            date_str = created_date.strftime('%Y-%m-%d')
+            
+            if task_data.get('completed', False):
+                completed_tasks += 1
+            else:
+                pending_tasks += 1
+                
+            # Update progress data
+            if date_str not in progress_data:
+                progress_data[date_str] = {'total': 0, 'completed': 0}
+            progress_data[date_str]['total'] += 1
+            if task_data.get('completed', False):
+                progress_data[date_str]['completed'] += 1
+        
+        # Calculate productivity score (completed tasks / total tasks * 100)
+        productivity_score = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        
+        # Get recent activity
+        activities_ref = db.collection('activities').where('userId', '==', user_id).order_by('timestamp', direction=firestore.Query.DESCENDING).limit(10).stream()
+        recent_activity = []
+        
+        for activity in activities_ref:
+            activity_data = activity.to_dict()
+            recent_activity.append({
+                'id': activity.id,
+                'type': activity_data.get('type'),
+                'description': activity_data.get('description'),
+                'time': activity_data.get('timestamp').strftime('%Y-%m-%d %H:%M:%S')
+            })
+            
+        # Format progress data for the chart
+        formatted_progress = []
+        for date_str, data in progress_data.items():
+            completion_rate = (data['completed'] / data['total'] * 100) if data['total'] > 0 else 0
+            formatted_progress.append({
+                'label': datetime.strptime(date_str, '%Y-%m-%d').strftime('%a'),
+                'value': round(completion_rate),
+                'height': round(completion_rate)
+            })
+            
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'stats': {
+                    'totalTasks': total_tasks,
+                    'completedTasks': completed_tasks,
+                    'pendingTasks': pending_tasks,
+                    'productivityScore': round(productivity_score)
+                },
+                'progressData': formatted_progress[-7:],  # Last 7 days
+                'recentActivity': recent_activity
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True) 

@@ -3,7 +3,7 @@
     <header class="page-header">
       <h1>Analytics</h1>
       <div class="header-actions">
-        <select v-model="timeRange" class="time-range-select">
+        <select v-model="timeRange" class="time-range-select" @change="fetchAnalyticsData">
           <option value="week">Last Week</option>
           <option value="month">Last Month</option>
           <option value="year">Last Year</option>
@@ -18,17 +18,17 @@
       <!-- Summary Cards -->
       <div class="summary-cards">
         <div class="stat-card">
-          <span class="icon"></span>
+          <span class="icon">📊</span>
           <h3>Total Tasks</h3>
-          <div class="stat-value">{{ stats.totalTasks }}</div>
+          <div class="stat-value">{{ analyticsData.stats.totalTasks }}</div>
         </div>
 
         <div class="stat-card">
           <span class="icon">✅</span>
           <h3>Completed Tasks</h3>
           <div class="stat-value">
-            {{ stats.completedTasks }}
-            <span class="trend up">⬆️</span>
+            {{ analyticsData.stats.completedTasks }}
+            <span class="trend up" v-if="analyticsData.stats.completedTasks > analyticsData.stats.pendingTasks">⬆️</span>
           </div>
         </div>
 
@@ -36,8 +36,8 @@
           <span class="icon">⏰</span>
           <h3>Pending Tasks</h3>
           <div class="stat-value">
-            {{ stats.pendingTasks }}
-            <span class="trend down">⬇️</span>
+            {{ analyticsData.stats.pendingTasks }}
+            <span class="trend down" v-if="analyticsData.stats.pendingTasks < analyticsData.stats.completedTasks">⬇️</span>
           </div>
         </div>
 
@@ -45,8 +45,9 @@
           <span class="icon">📈</span>
           <h3>Productivity Score</h3>
           <div class="stat-value">
-            {{ stats.productivityScore }}%
-            <span class="trend up">⬆️</span>
+            {{ analyticsData.stats.productivityScore }}%
+            <span class="trend up" v-if="analyticsData.stats.productivityScore >= 70">⬆️</span>
+            <span class="trend down" v-else>⬇️</span>
           </div>
         </div>
       </div>
@@ -56,7 +57,7 @@
         <h2>Task Completion Progress</h2>
         <div class="progress-chart">
           <div 
-            v-for="(bar, index) in progressData" 
+            v-for="(bar, index) in analyticsData.progressData" 
             :key="index"
             class="chart-bar"
             :style="{ height: bar.height + '%' }"
@@ -71,11 +72,11 @@
       <div class="activity-container">
         <h2>Recent Activity</h2>
         <div class="activity-list">
-          <div v-for="activity in recentActivity" :key="activity.id" class="activity-item">
+          <div v-for="activity in analyticsData.recentActivity" :key="activity.id" class="activity-item">
             <span class="icon">{{ getActivityIcon(activity.type) }}</span>
             <div class="activity-content">
               <p>{{ activity.description }}</p>
-              <span class="activity-time">{{ activity.time }}</span>
+              <span class="activity-time">{{ formatTime(activity.time) }}</span>
             </div>
           </div>
         </div>
@@ -85,52 +86,139 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import { useToast } from 'vue-toastification'
+import { getAuth } from 'firebase/auth'
 
+const toast = useToast()
 const timeRange = ref('week')
-
-// Mock data
-const stats = ref({
-  totalTasks: 32,
-  completedTasks: 24,
-  pendingTasks: 8,
-  productivityScore: 85
+const analyticsData = ref({
+  stats: {
+    totalTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    productivityScore: 0,
+    totalEvents: 0
+  },
+  progressData: [],
+  recentActivity: []
 })
 
-const progressData = ref([
-  { label: 'Mon', value: 65, height: 65 },
-  { label: 'Tue', value: 80, height: 80 },
-  { label: 'Wed', value: 45, height: 45 },
-  { label: 'Thu', value: 90, height: 90 },
-  { label: 'Fri', value: 75, height: 75 },
-  { label: 'Sat', value: 50, height: 50 },
-  { label: 'Sun', value: 70, height: 70 }
-])
+const fetchAnalyticsData = async () => {
+  try {
+    const auth = getAuth()
+    const user = auth.currentUser
+    
+    if (!user) {
+      toast.error('Please login to view analytics')
+      return
+    }
 
-const recentActivity = ref([
-  {
-    id: 1,
-    type: 'task_completed',
-    description: 'Completed task: Project Planning',
-    time: '2 hours ago'
-  },
-  {
-    id: 2,
-    type: 'task_created',
-    description: 'Created new task: Review Documentation',
-    time: '4 hours ago'
-  },
-  {
-    id: 3,
-    type: 'task_updated',
-    description: 'Updated task: Team Meeting Notes',
-    time: '6 hours ago'
+    const token = await user.getIdToken()
+    
+    // Fetch tasks data
+    const tasksResponse = await axios.get('/api/tasks', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (tasksResponse.data.status === 'success') {
+      const tasks = tasksResponse.data.data
+      const now = new Date()
+      let startDate
+
+      // Calculate start date based on selected time range
+      if (timeRange.value === 'week') {
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      } else if (timeRange.value === 'month') {
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      } else {
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+      }
+
+      // Filter tasks by date range
+      const filteredTasks = tasks.filter(task => {
+        const taskDate = new Date(task.createdAt)
+        return taskDate >= startDate && taskDate <= now
+      })
+
+      // Calculate task statistics
+      const totalTasks = filteredTasks.length
+      const completedTasks = filteredTasks.filter(task => task.completed).length
+      const pendingTasks = totalTasks - completedTasks
+
+      // Calculate daily progress data
+      const progressData = {}
+      filteredTasks.forEach(task => {
+        const date = new Date(task.createdAt).toISOString().split('T')[0]
+        if (!progressData[date]) {
+          progressData[date] = { total: 0, completed: 0 }
+        }
+        progressData[date].total++
+        if (task.completed) {
+          progressData[date].completed++
+        }
+      })
+
+      // Format progress data for chart
+      const formattedProgress = Object.entries(progressData).map(([date, data]) => {
+        const completionRate = (data.completed / data.total) * 100
+        return {
+          label: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+          value: Math.round(completionRate),
+          height: Math.round(completionRate)
+        }
+      })
+
+      // Fetch events count
+      const eventsResponse = await axios.get('/api/events', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const totalEvents = eventsResponse.data.status === 'success' ? eventsResponse.data.data.length : 0
+
+      // Update analytics data
+      analyticsData.value = {
+        stats: {
+          totalTasks,
+          completedTasks,
+          pendingTasks,
+          productivityScore: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+          totalEvents
+        },
+        progressData: formattedProgress.slice(-7), // Last 7 days
+        recentActivity: filteredTasks
+          .filter(task => task.completed || task.status === 'in-progress')
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+          .slice(0, 10)
+          .map(task => ({
+            id: task.id,
+            type: task.completed ? 'task_completed' : 'task_updated',
+            description: `${task.completed ? 'Completed' : 'Updated'} task: ${task.title}`,
+            time: task.updatedAt
+          }))
+      }
+    } else {
+      toast.error('Failed to fetch analytics data')
+    }
+  } catch (error) {
+    console.error('Error fetching analytics:', error)
+    toast.error('Error loading analytics data')
   }
-])
+}
 
-const generateReport = () => {
-  console.log('Generating report for:', timeRange.value)
-  // TODO: Implement report generation
+const generateReport = async () => {
+  try {
+    // TODO: Implement report generation
+    toast.info('Report generation will be implemented soon')
+  } catch (error) {
+    console.error('Error generating report:', error)
+    toast.error('Failed to generate report')
+  }
 }
 
 const getActivityIcon = (type) => {
@@ -148,6 +236,25 @@ const getActivityIcon = (type) => {
   }
   return icons[type] || '❓'
 }
+
+const formatTime = (timestamp) => {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
+  
+  if (diffInHours < 1) {
+    return 'Just now'
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hours ago`
+  } else {
+    const days = Math.floor(diffInHours / 24)
+    return `${days} days ago`
+  }
+}
+
+onMounted(() => {
+  fetchAnalyticsData()
+})
 </script>
 
 <style scoped>
