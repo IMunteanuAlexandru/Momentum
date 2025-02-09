@@ -37,8 +37,12 @@ const routes = [
     children: [
       {
         path: '',
-        name: 'Overview',
-        redirect: { name: 'Tasks' }
+        redirect: '/dashboard/analytics'
+      },
+      {
+        path: 'analytics',
+        name: 'Analytics',
+        component: Analytics
       },
       {
         path: 'tasks',
@@ -54,11 +58,6 @@ const routes = [
         path: 'notes',
         name: 'Notes',
         component: Notes
-      },
-      {
-        path: 'analytics',
-        name: 'Analytics',
-        component: Analytics
       },
       {
         path: 'export',
@@ -119,7 +118,7 @@ router.beforeEach(async (to, from, next) => {
     if (requiresAuth && !finalAuthState) {
       next('/login')
     } else if (requiresGuest && finalAuthState) {
-      next('/dashboard/tasks')
+      next('/dashboard/analytics')
     } else {
       next()
     }

@@ -7,6 +7,10 @@
         <div class="time-display">{{ currentTime }}</div>
       </div>
       <nav class="sidebar-nav">
+        <router-link to="/dashboard/analytics" class="nav-item">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </router-link>
         <router-link to="/dashboard/tasks" class="nav-item">
           <span class="nav-icon">📝</span>
           Tasks
@@ -18,10 +22,6 @@
         <router-link to="/dashboard/notes" class="nav-item">
           <span class="nav-icon">📝</span>
           Notes
-        </router-link>
-        <router-link to="/dashboard/analytics" class="nav-item">
-          <span class="nav-icon">📈</span>
-          <span>Analytics</span>
         </router-link>
         <router-link to="/dashboard/export" class="nav-item">
           <span class="nav-icon">📤</span>
@@ -35,7 +35,6 @@
 
       <div class="sidebar-footer">
         <button @click="handleLogout" class="logout-btn">
-          
           <span>Logout</span>
         </button>
       </div>
@@ -47,6 +46,7 @@
     </main>
   </div>
 </template>
+
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
