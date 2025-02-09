@@ -63,35 +63,6 @@
         </div>
       </div>
 
-      <!-- Time & Date Section -->
-      <div class="settings-card">
-        <div class="card-header">
-          <div class="icon-wrapper time">
-            ⏰
-          </div>
-          <h2>Timp & Dată</h2>
-        </div>
-        <div class="card-content">
-          <div class="setting-group">
-            <label class="switch-label">
-              <span>Format 24 ore</span>
-              <div class="switch">
-                <input type="checkbox" v-model="timeFormat24h">
-                <span class="slider round"></span>
-              </div>
-            </label>
-          </div>
-          <div class="setting-group">
-            <label for="date-format">Format Dată</label>
-            <select id="date-format" v-model="dateFormat" class="select-input">
-              <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-              <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
       <!-- Language Section -->
       <div class="settings-card">
         <div class="card-header">
@@ -181,8 +152,6 @@ export default {
       
       emailNotifications.value = localStorage.getItem('emailNotifications') !== 'false'
       pushNotifications.value = localStorage.getItem('pushNotifications') !== 'false'
-      timeFormat24h.value = localStorage.getItem('timeFormat24h') !== 'false'
-      dateFormat.value = localStorage.getItem('dateFormat') || 'DD/MM/YYYY'
       language.value = localStorage.getItem('language') || 'ro'
     })
 
@@ -190,8 +159,6 @@ export default {
       currentTheme,
       emailNotifications,
       pushNotifications,
-      timeFormat24h,
-      dateFormat,
       language,
       handleThemeChange,
       saveSettings,
@@ -265,7 +232,6 @@ export default {
 
 .appearance { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
 .notifications { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
-.time { background: linear-gradient(135deg, #2196F3, #00BCD4); }
 .language { background: linear-gradient(135deg, #9C27B0, #E91E63); }
 
 .card-header h2 {
