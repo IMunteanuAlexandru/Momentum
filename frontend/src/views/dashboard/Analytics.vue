@@ -119,7 +119,6 @@ const analyticsData = ref({
     completedTasks: 0,
     pendingTasks: 0,
     productivityScore: 0,
-    totalEvents: 0,
     monthTotalEvents: 0,
     monthPastEvents: 0
   },
@@ -146,8 +145,16 @@ const fetchAnalyticsData = async () => {
       }
     })
 
+    // Fetch events data
+    const eventsResponse = await axios.get('/api/events', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
     if (tasksResponse.data.status === 'success') {
       const tasks = tasksResponse.data.data
+      const events = eventsResponse.data.status === 'success' ? eventsResponse.data.data : []
       const now = new Date()
       let startDate
 
@@ -171,7 +178,34 @@ const fetchAnalyticsData = async () => {
       const completedTasks = filteredTasks.filter(task => task.completed).length
       const pendingTasks = totalTasks - completedTasks
 
-      // Calculate daily progress data
+      // Calculate events statistics for current month
+      const currentDate = new Date()
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
+
+      // Filter events for current month
+      const currentMonthEvents = events.filter(event => {
+        const eventStartDate = new Date(event.startDate)
+        const eventEndDate = new Date(event.endDate)
+        
+        // Event is in current month if:
+        // 1. Start date is in current month OR
+        // 2. End date is in current month OR
+        // 3. Event spans over current month (starts before and ends after)
+        return (
+          (eventStartDate >= firstDayOfMonth && eventStartDate <= lastDayOfMonth) ||
+          (eventEndDate >= firstDayOfMonth && eventEndDate <= lastDayOfMonth) ||
+          (eventStartDate <= firstDayOfMonth && eventEndDate >= lastDayOfMonth)
+        )
+      })
+
+      // Calculate past events (events that have already occurred)
+      const pastEvents = currentMonthEvents.filter(event => {
+        const eventEndDate = new Date(event.endDate)
+        return eventEndDate < currentDate
+      })
+
+      // Calculate progress data
       const progressData = {}
       
       // Generate data for last 7 days
@@ -210,53 +244,34 @@ const fetchAnalyticsData = async () => {
           }
         })
 
-      // Fetch events count
-      const eventsResponse = await axios.get('/api/events', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      const totalEvents = eventsResponse.data.status === 'success' ? eventsResponse.data.data.length : 0
-
-      // Calculate current month events statistics
-      const currentDate = new Date()
-      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-      
-      const monthEvents = eventsResponse.data.status === 'success' ? 
-        eventsResponse.data.data.filter(event => {
-          const eventDate = new Date(event.date)
-          return eventDate >= firstDayOfMonth && eventDate <= lastDayOfMonth
-        }) : []
-
-      const pastMonthEvents = monthEvents.filter(event => {
-        const eventDate = new Date(event.date)
-        return eventDate < currentDate
-      })
-
-      // Update analytics data
+      // Update analytics data with all statistics
       analyticsData.value = {
         stats: {
           totalTasks,
           completedTasks,
           pendingTasks,
           productivityScore: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-          totalEvents,
-          monthTotalEvents: monthEvents.length,
-          monthPastEvents: pastMonthEvents.length
+          monthTotalEvents: currentMonthEvents.length,
+          monthPastEvents: pastEvents.length
         },
-        progressData: formattedProgress.slice(-7), // Last 7 days
-        recentActivity: filteredTasks
-          .filter(task => task.completed || task.status === 'in-progress')
-          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-          .slice(0, 10)
-          .map(task => ({
-            id: task.id,
-            type: task.completed ? 'task_completed' : 'task_updated',
-            description: `${task.completed ? 'Completed' : 'Updated'} task: ${task.title}`,
-            time: task.updatedAt
+        progressData: formattedProgress,
+        recentActivity: [
+          ...filteredTasks
+            .filter(task => task.completed || task.status === 'in-progress')
+            .map(task => ({
+              id: task.id,
+              type: task.completed ? 'task_completed' : 'task_updated',
+              description: `${task.completed ? 'Completed' : 'Updated'} task: ${task.title}`,
+              time: task.updatedAt
+            })),
+          ...currentMonthEvents.map(event => ({
+            id: event.id,
+            type: 'event',
+            description: `${event.title}${event.description ? ` - ${event.description}` : ''}`,
+            time: event.startDate,
+            category: event.category
           }))
+        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 10)
       }
     } else {
       toast.error('Failed to fetch analytics data')
@@ -286,6 +301,7 @@ const getActivityIcon = (type) => {
     'note_created': '📝',
     'note_updated': '✏️',
     'note_deleted': '🗑️',
+    'event': '📅',
     'event_created': '📅',
     'event_updated': '✏️',
     'event_deleted': '🗑️'
@@ -294,7 +310,15 @@ const getActivityIcon = (type) => {
 }
 
 const formatTime = (timestamp) => {
-  return ''
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleString('ro-RO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 onMounted(() => {
