@@ -13,7 +13,7 @@
         </button>
       </div>
     </header>
-    
+
     <div class="analytics-grid">
       <!-- Summary Cards -->
       <div class="summary-cards">
@@ -28,7 +28,8 @@
           <h3>Completed Tasks</h3>
           <div class="stat-value">
             {{ analyticsData.stats.completedTasks }}
-            <span class="trend up" v-if="analyticsData.stats.completedTasks > analyticsData.stats.pendingTasks">⬆️</span>
+            <span class="trend up"
+              v-if="analyticsData.stats.completedTasks > analyticsData.stats.pendingTasks">⬆️</span>
           </div>
         </div>
 
@@ -37,7 +38,8 @@
           <h3>Pending Tasks</h3>
           <div class="stat-value">
             {{ analyticsData.stats.pendingTasks }}
-            <span class="trend down" v-if="analyticsData.stats.pendingTasks < analyticsData.stats.completedTasks">⬇️</span>
+            <span class="trend down"
+              v-if="analyticsData.stats.pendingTasks < analyticsData.stats.completedTasks">⬇️</span>
           </div>
         </div>
 
@@ -46,8 +48,30 @@
           <h3>Productivity Score</h3>
           <div class="stat-value">
             {{ analyticsData.stats.productivityScore }}%
-            <span class="trend up" v-if="analyticsData.stats.productivityScore >= 70">⬆️</span>
-            <span class="trend down" v-else>⬇️</span>
+            <div>
+              <span class="trend up" v-if="analyticsData.stats.productivityScore >= 70">⬆️</span>
+              <span class="trend down" v-else>⬇️</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <span class="icon">📅</span>
+          <h3>Evenimente Luna Curentă</h3>
+          <div class="stat-value">
+            {{ analyticsData.stats.monthTotalEvents }}
+            <span class="trend up"
+              v-if="analyticsData.stats.monthTotalEvents > 0">⬆️</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <span class="icon">✅</span>
+          <h3>Evenimente Trecute</h3>
+          <div class="stat-value">
+            {{ analyticsData.stats.monthPastEvents }}
+            <span class="trend up"
+              v-if="analyticsData.stats.monthPastEvents === analyticsData.stats.monthTotalEvents">⬆️</span>
           </div>
         </div>
       </div>
@@ -56,12 +80,8 @@
       <div class="chart-container">
         <h2>Task Completion Progress</h2>
         <div class="progress-chart">
-          <div 
-            v-for="(bar, index) in analyticsData.progressData" 
-            :key="index"
-            class="chart-bar"
-            :style="{ height: bar.height + '%' }"
-          >
+          <div v-for="(bar, index) in analyticsData.progressData" :key="index" class="chart-bar"
+            :style="{ height: bar.height + '%' }">
             <span class="bar-label">{{ bar.label }}</span>
             <span class="bar-value">{{ bar.value }}%</span>
           </div>
@@ -99,7 +119,9 @@ const analyticsData = ref({
     completedTasks: 0,
     pendingTasks: 0,
     productivityScore: 0,
-    totalEvents: 0
+    totalEvents: 0,
+    monthTotalEvents: 0,
+    monthPastEvents: 0
   },
   progressData: [],
   recentActivity: []
@@ -109,14 +131,14 @@ const fetchAnalyticsData = async () => {
   try {
     const auth = getAuth()
     const user = auth.currentUser
-    
+
     if (!user) {
       toast.error('Please login to view analytics')
       return
     }
 
     const token = await user.getIdToken()
-    
+
     // Fetch tasks data
     const tasksResponse = await axios.get('/api/tasks', {
       headers: {
@@ -151,26 +173,42 @@ const fetchAnalyticsData = async () => {
 
       // Calculate daily progress data
       const progressData = {}
+      
+      // Generate data for last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now)
+        date.setDate(now.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        progressData[dateStr] = { total: 0, completed: 0 }
+      }
+
+      // Fill in the task data
       filteredTasks.forEach(task => {
-        const date = new Date(task.createdAt).toISOString().split('T')[0]
-        if (!progressData[date]) {
-          progressData[date] = { total: 0, completed: 0 }
-        }
-        progressData[date].total++
-        if (task.completed) {
-          progressData[date].completed++
+        const date = new Date(task.dueDate).toISOString().split('T')[0]
+        if (progressData[date]) {
+          progressData[date].total++
+          if (task.completed) {
+            progressData[date].completed++
+          }
         }
       })
 
       // Format progress data for chart
-      const formattedProgress = Object.entries(progressData).map(([date, data]) => {
-        const completionRate = (data.completed / data.total) * 100
-        return {
-          label: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-          value: Math.round(completionRate),
-          height: Math.round(completionRate)
-        }
-      })
+      const formattedProgress = Object.entries(progressData)
+        .sort(([dateA], [dateB]) => new Date(dateA) - new Date(dateB))
+        .map(([date, data]) => {
+          const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
+          return {
+            label: new Date(date).toLocaleDateString('en-US', { 
+              month: 'short',
+              day: 'numeric'
+            }),
+            value: Math.round(completionRate),
+            height: Math.round(completionRate),
+            total: data.total,
+            completed: data.completed
+          }
+        })
 
       // Fetch events count
       const eventsResponse = await axios.get('/api/events', {
@@ -181,6 +219,22 @@ const fetchAnalyticsData = async () => {
 
       const totalEvents = eventsResponse.data.status === 'success' ? eventsResponse.data.data.length : 0
 
+      // Calculate current month events statistics
+      const currentDate = new Date()
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+      
+      const monthEvents = eventsResponse.data.status === 'success' ? 
+        eventsResponse.data.data.filter(event => {
+          const eventDate = new Date(event.date)
+          return eventDate >= firstDayOfMonth && eventDate <= lastDayOfMonth
+        }) : []
+
+      const pastMonthEvents = monthEvents.filter(event => {
+        const eventDate = new Date(event.date)
+        return eventDate < currentDate
+      })
+
       // Update analytics data
       analyticsData.value = {
         stats: {
@@ -188,7 +242,9 @@ const fetchAnalyticsData = async () => {
           completedTasks,
           pendingTasks,
           productivityScore: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-          totalEvents
+          totalEvents,
+          monthTotalEvents: monthEvents.length,
+          monthPastEvents: pastMonthEvents.length
         },
         progressData: formattedProgress.slice(-7), // Last 7 days
         recentActivity: filteredTasks
@@ -238,18 +294,7 @@ const getActivityIcon = (type) => {
 }
 
 const formatTime = (timestamp) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
-  
-  if (diffInHours < 1) {
-    return 'Just now'
-  } else if (diffInHours < 24) {
-    return `${diffInHours} hours ago`
-  } else {
-    const days = Math.floor(diffInHours / 24)
-    return `${days} days ago`
-  }
+  return ''
 }
 
 onMounted(() => {
@@ -327,6 +372,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  justify-content: center;
 }
 
 .icon {
@@ -345,6 +391,9 @@ h1 {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .trend {
@@ -455,23 +504,23 @@ h1 {
   .analytics-container {
     padding: 1rem;
   }
-  
+
   .page-header {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .header-actions {
     width: 100%;
   }
-  
+
   .time-range-select,
   .generate-report-btn {
     flex: 1;
   }
-  
+
   .progress-chart {
     height: 200px;
   }
 }
-</style> 
+</style>

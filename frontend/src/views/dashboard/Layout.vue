@@ -2,12 +2,12 @@
   <div class="dashboard-layout">
     <nav class="sidebar">
       <div class="sidebar-header">
-        <img :src="logoUrl" alt="Logo" class="logo" />
+        <img src="/logo.png" alt="Logo" class="logo" />
         <h1>Momentum</h1>
       </div>
 
       <div class="user-info">
-        <img :src="userPhotoURL || defaultAvatarUrl" :alt="userDisplayName" class="avatar" />
+        <img :src="userPhotoURL || '/default-avatar.png'" :alt="userDisplayName" class="avatar" />
         <div class="user-details">
           <h3>{{ userDisplayName }}</h3>
           <p>{{ userEmail }}</p>
@@ -16,29 +16,29 @@
 
       <div class="nav-links">
         <router-link to="/dashboard/overview" class="nav-link" active-class="active">
-          <span class="icon">🏠</span>
+          <i class="fas fa-home"></i>
           Overview
         </router-link>
         
         <router-link to="/dashboard/tasks" class="nav-link" active-class="active">
-          <span class="icon">📋</span>
+          <i class="fas fa-tasks"></i>
           Tasks
         </router-link>
         
         <router-link to="/dashboard/calendar" class="nav-link" active-class="active">
-          <span class="icon">📅</span>
+          <i class="fas fa-calendar"></i>
           Calendar
         </router-link>
         
         <router-link to="/dashboard/notes" class="nav-link" active-class="active">
-          <span class="icon">📝</span>
+          <i class="fas fa-sticky-note"></i>
           Notes
         </router-link>
       </div>
 
       <div class="sidebar-footer">
         <button @click="handleLogout" class="btn-logout">
-          <span class="icon">🚪</span>
+          <i class="fas fa-sign-out-alt"></i>
           Logout
         </button>
       </div>
@@ -47,18 +47,18 @@
     <main class="main-content">
       <header class="top-bar">
         <div class="search-bar">
-          <span class="icon">🔍</span>
+          <i class="fas fa-search"></i>
           <input type="text" placeholder="Search..." v-model="searchQuery" @input="handleSearch" />
         </div>
 
         <div class="top-bar-actions">
           <button class="btn-icon" @click="toggleNotifications">
-            <span class="icon">🔔</span>
+            <i class="fas fa-bell"></i>
             <span v-if="unreadNotifications" class="notification-badge">{{ unreadNotifications }}</span>
           </button>
           
           <button class="btn-icon" @click="toggleTheme">
-            <span class="icon">{{ isDarkMode ? '☀️' : '🌙' }}</span>
+            <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
           </button>
         </div>
       </header>
@@ -74,8 +74,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-import logoImage from '@/assets/logo.svg'
-import defaultAvatar from '@/assets/default-avatar.svg'
 
 export default {
   name: 'DashboardLayout',
@@ -86,8 +84,6 @@ export default {
     const searchQuery = ref('')
     const isDarkMode = ref(false)
     const unreadNotifications = ref(0)
-    const logoUrl = ref(logoImage)
-    const defaultAvatarUrl = ref(defaultAvatar)
 
     const userDisplayName = computed(() => {
       const user = store.getters['auth/currentUser']
@@ -138,8 +134,6 @@ export default {
     })
 
     return {
-      logoUrl,
-      defaultAvatarUrl,
       searchQuery,
       isDarkMode,
       unreadNotifications,
@@ -352,11 +346,6 @@ export default {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
-}
-
-.icon {
-  font-size: 1.2rem;
-  margin-right: 0.5rem;
 }
 
 @media (max-width: 768px) {

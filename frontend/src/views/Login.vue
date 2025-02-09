@@ -148,7 +148,7 @@ export default {
             })
             
             console.log('Login successful, redirecting to dashboard...')
-            router.push('/dashboard/tasks')
+            router.push('/dashboard/analytics')
           } else {
             throw new Error(response.data.message || 'Login failed')
           }
@@ -195,7 +195,7 @@ export default {
         }
         await store.dispatch('auth/setUser', userData)
 
-        router.push('/dashboard/tasks')
+        router.push('/dashboard/analytics')
       } catch (e) {
         error.value = 'Invalid email or password'
       } finally {
