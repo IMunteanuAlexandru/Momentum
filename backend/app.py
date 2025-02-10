@@ -270,23 +270,31 @@ def get_dashboard_overview():
 def get_tasks():
     try:
         user_id = request.user['uid']
+        
+        # Obține task-urile fără ordonare directă
         tasks_ref = db.collection('tasks').where('userId', '==', user_id).stream()
+        
         tasks = []
         
+        # Adaugă task-urile într-o listă
         for task in tasks_ref:
             task_data = task.to_dict()
             task_data['id'] = task.id
             tasks.append(task_data)
         
+        # Dacă `dueDate` este un string, convertește-l în datetime pentru sortare
+        tasks_sorted = sorted(tasks, key=lambda x: x.get('dueDate'), reverse=True)
+        
         return jsonify({
             'status': 'success',
-            'data': tasks
+            'data': tasks_sorted
         })
     except Exception as e:
         return jsonify({
             'status': 'error',
             'message': str(e)
         }), 400
+
 
 @app.route('/api/tasks', methods=['POST'])
 @check_token
