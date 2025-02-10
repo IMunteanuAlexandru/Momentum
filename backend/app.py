@@ -41,7 +41,8 @@ def check_token(f):
                 }), 401
                 
             token = auth_header.split('Bearer ')[1]
-            user = auth.verify_id_token(token)
+            # Verifică token-ul cu check_revoked=False pentru a permite sesiuni lungi
+            user = auth.verify_id_token(token, check_revoked=False)
             request.user = user
         except Exception as e:
             return jsonify({

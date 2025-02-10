@@ -5,7 +5,14 @@
       <p class="export-description">Exportă datele tale în diferite formate</p>
     </div>
 
-    <div class="export-grid">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state">
+      <span class="loading-spinner">⌛</span>
+      <p>Se încarcă datele...</p>
+    </div>
+
+    <!-- Export Grid -->
+    <div v-else class="export-grid">
       <!-- Tasks Export -->
       <div class="export-card">
         <div class="card-header">
@@ -50,9 +57,13 @@
               Include sarcini arhivate
             </label>
           </div>
-          <button @click="exportTasks" class="btn-export">
+          <button 
+            @click="exportTasks" 
+            class="btn-export"
+            :disabled="!tasks.length"
+          >
             <span class="icon">⬇️</span>
-            Exportă Sarcini
+            {{ tasksButtonText }}
           </button>
         </div>
       </div>
@@ -108,9 +119,13 @@
               >
             </div>
           </div>
-          <button @click="exportCalendar" class="btn-export">
+          <button 
+            @click="exportCalendar" 
+            class="btn-export"
+            :disabled="!events.length"
+          >
             <span class="icon">⬇️</span>
-            Exportă Evenimente
+            {{ eventsButtonText }}
           </button>
         </div>
       </div>
@@ -159,9 +174,13 @@
               Include notițe arhivate
             </label>
           </div>
-          <button @click="exportNotes" class="btn-export">
+          <button 
+            @click="exportNotes" 
+            class="btn-export"
+            :disabled="!notes.length"
+          >
             <span class="icon">⬇️</span>
-            Exportă Notițe
+            {{ notesButtonText }}
           </button>
         </div>
       </div>
@@ -170,7 +189,7 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useStore } from 'vuex'
 
 export default {
@@ -198,86 +217,186 @@ export default {
       }
     })
 
+    const isLoading = ref(false)
+
+    // Computed properties for store data
+    const tasks = computed(() => store.getters['tasks/allTasks'])
+    const events = computed(() => store.getters['calendar/allEvents'])
+    const notes = computed(() => store.getters['notes/allNotes'])
+
+    // Computed properties for button text
+    const tasksButtonText = computed(() => tasks.value.length ? 'Exportă Sarcini' : 'Nu există sarcini')
+    const eventsButtonText = computed(() => events.value.length ? 'Exportă Evenimente' : 'Nu există evenimente')
+    const notesButtonText = computed(() => notes.value.length ? 'Exportă Notițe' : 'Nu există notițe')
+
+    const loadData = async () => {
+      isLoading.value = true
+      try {
+        await Promise.all([
+          store.dispatch('tasks/fetchTasks'),
+          store.dispatch('calendar/fetchEvents'),
+          store.dispatch('notes/fetchNotes')
+        ])
+      } catch (error) {
+        console.error('Error loading data:', error)
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la încărcarea datelor'
+        })
+      } finally {
+        isLoading.value = false
+      }
+    }
+
     const exportTasks = async () => {
-      const tasks = store.state.tasks.list
-      const filteredTasks = tasks.filter(task => {
+      if (!tasks.value.length) {
+        await store.dispatch('tasks/fetchTasks')
+      }
+
+      const filteredTasks = tasks.value.filter(task => {
         if (!exportOptions.value.tasks.includeCompleted && task.completed) return false
         if (!exportOptions.value.tasks.includeArchived && task.archived) return false
         return true
       })
 
-      if (exportFormat.value.tasks === 'csv') {
-        const csv = convertTasksToCSV(filteredTasks)
-        downloadFile(csv, 'tasks.csv', 'text/csv')
-      } else {
-        const json = JSON.stringify(filteredTasks, null, 2)
-        downloadFile(json, 'tasks.json', 'application/json')
+      try {
+        if (exportFormat.value.tasks === 'csv') {
+          const csv = convertTasksToCSV(filteredTasks)
+          downloadFile(csv, 'tasks.csv', 'text/csv')
+        } else {
+          const json = JSON.stringify(filteredTasks, null, 2)
+          downloadFile(json, 'tasks.json', 'application/json')
+        }
+        store.dispatch('notifications/add', {
+          type: 'success',
+          message: 'Export sarcini realizat cu succes'
+        })
+      } catch (error) {
+        console.error('Error exporting tasks:', error)
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la exportul sarcinilor'
+        })
       }
     }
 
     const exportCalendar = async () => {
-      const events = store.state.calendar.events
-      const filteredEvents = events.filter(event => {
-        const eventDate = new Date(event.startDate)
-        const startDate = new Date(exportOptions.value.calendar.startDate)
-        const endDate = new Date(exportOptions.value.calendar.endDate)
-        return eventDate >= startDate && eventDate <= endDate
+      if (!events.value.length) {
+        await store.dispatch('calendar/fetchEvents')
+      }
+
+      const startDate = new Date(exportOptions.value.calendar.startDate)
+      startDate.setHours(0, 0, 0, 0)
+      
+      const endDate = new Date(exportOptions.value.calendar.endDate)
+      endDate.setHours(23, 59, 59, 999)
+
+      const filteredEvents = events.value.filter(event => {
+        const eventStart = new Date(event.startDate)
+        return eventStart >= startDate && eventStart <= endDate
       })
 
-      if (exportFormat.value.calendar === 'csv') {
-        const csv = convertEventsToCSV(filteredEvents)
-        downloadFile(csv, 'events.csv', 'text/csv')
-      } else if (exportFormat.value.calendar === 'json') {
-        const json = JSON.stringify(filteredEvents, null, 2)
-        downloadFile(json, 'events.json', 'application/json')
-      } else {
-        const ical = convertEventsToICal(filteredEvents)
-        downloadFile(ical, 'events.ics', 'text/calendar')
+      try {
+        if (filteredEvents.length === 0) {
+          store.dispatch('notifications/add', {
+            type: 'warning',
+            message: 'Nu există evenimente în intervalul selectat'
+          })
+          return
+        }
+
+        if (exportFormat.value.calendar === 'csv') {
+          const csv = convertEventsToCSV(filteredEvents)
+          downloadFile(csv, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.csv`, 'text/csv')
+        } else if (exportFormat.value.calendar === 'json') {
+          const cleanedEvents = filteredEvents.map(event => ({
+            titlu: event.title,
+            descriere: event.description,
+            dataStart: formatDateFriendly(event.startDate, true),
+            dataSfarsit: formatDateFriendly(event.endDate, true),
+            categorie: event.category,
+            recurenta: formatRecurrenceText(event.recurrence),
+            notificari: formatNotifications(event.notifications)
+          }))
+          const json = JSON.stringify(cleanedEvents, null, 2)
+          downloadFile(json, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.json`, 'application/json')
+        } else {
+          const ical = convertEventsToICal(filteredEvents)
+          downloadFile(ical, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.ics`, 'text/calendar')
+        }
+        store.dispatch('notifications/add', {
+          type: 'success',
+          message: 'Export calendar realizat cu succes'
+        })
+      } catch (error) {
+        console.error('Error exporting calendar:', error)
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la exportul calendarului'
+        })
       }
     }
 
     const exportNotes = async () => {
-      const notes = store.state.notes.list
-      const filteredNotes = notes.filter(note => {
+      if (!notes.value.length) {
+        await store.dispatch('notes/fetchNotes')
+      }
+
+      const filteredNotes = notes.value.filter(note => {
         if (!exportOptions.value.notes.includeArchived && note.archived) return false
         return true
       })
 
-      if (exportFormat.value.notes === 'txt') {
-        const txt = convertNotesToTxt(filteredNotes)
-        downloadFile(txt, 'notes.txt', 'text/plain')
-      } else if (exportFormat.value.notes === 'md') {
-        const md = convertNotesToMd(filteredNotes)
-        downloadFile(md, 'notes.md', 'text/markdown')
-      } else {
-        const json = JSON.stringify(filteredNotes, null, 2)
-        downloadFile(json, 'notes.json', 'application/json')
+      try {
+        if (exportFormat.value.notes === 'txt') {
+          const txt = convertNotesToTxt(filteredNotes)
+          downloadFile(txt, 'notes.txt', 'text/plain')
+        } else if (exportFormat.value.notes === 'md') {
+          const md = convertNotesToMd(filteredNotes)
+          downloadFile(md, 'notes.md', 'text/markdown')
+        } else {
+          const json = JSON.stringify(filteredNotes, null, 2)
+          downloadFile(json, 'notes.json', 'application/json')
+        }
+        store.dispatch('notifications/add', {
+          type: 'success',
+          message: 'Export notițe realizat cu succes'
+        })
+      } catch (error) {
+        console.error('Error exporting notes:', error)
+        store.dispatch('notifications/add', {
+          type: 'error',
+          message: 'Eroare la exportul notițelor'
+        })
       }
     }
 
     const convertTasksToCSV = (tasks) => {
-      const headers = ['ID', 'Titlu', 'Descriere', 'Prioritate', 'Categorie', 'Data Limită', 'Completat']
+      const headers = ['Titlu', 'Descriere', 'Prioritate', 'Categorie', 'Data Limită', 'Status', 'Creat', 'Actualizat']
       const rows = tasks.map(task => [
-        task.id,
-        task.title,
-        task.description,
+        escapeCsvField(task.title),
+        escapeCsvField(task.description),
         task.priority,
-        task.category,
-        task.dueDate,
-        task.completed
+        escapeCsvField(task.category),
+        formatDateFriendly(task.dueDate),
+        task.completed ? 'Completat' : 'În progres',
+        formatDateFriendly(task.createdAt),
+        formatDateFriendly(task.updatedAt)
       ])
       return [headers, ...rows].map(row => row.join(',')).join('\n')
     }
 
     const convertEventsToCSV = (events) => {
-      const headers = ['ID', 'Titlu', 'Descriere', 'Data Start', 'Data Sfârșit', 'Categorie']
+      const headers = ['Titlu', 'Descriere', 'Început', 'Sfârșit', 'Categorie', 'Recurență', 'Notificări']
       const rows = events.map(event => [
-        event.id,
-        event.title,
-        event.description,
-        event.startDate,
-        event.endDate,
-        event.category
+        
+        escapeCsvField(event.title),
+        escapeCsvField(event.description),
+        formatDateFriendly(event.startDate, true),
+        formatDateFriendly(event.endDate, true),
+        event.category,
+        formatRecurrenceText(event.recurrence),
+        formatNotifications(event.notifications)
       ])
       return [headers, ...rows].map(row => row.join(',')).join('\n')
     }
@@ -286,18 +405,28 @@ export default {
       let ical = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Momentum//Calendar//RO'
+        'PRODID:-//Momentum//Calendar//RO',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'X-WR-CALNAME:Momentum Calendar',
+        'X-WR-TIMEZONE:Europe/Bucharest'
       ]
 
       events.forEach(event => {
         ical.push('BEGIN:VEVENT')
-        ical.push(`UID:${event.id}`)
         ical.push(`DTSTAMP:${formatDateToICal(new Date())}`)
         ical.push(`DTSTART:${formatDateToICal(new Date(event.startDate))}`)
         ical.push(`DTEND:${formatDateToICal(new Date(event.endDate))}`)
-        ical.push(`SUMMARY:${event.title}`)
-        ical.push(`DESCRIPTION:${event.description}`)
-        ical.push(`CATEGORIES:${event.category}`)
+        ical.push(`SUMMARY:${escapeIcalField(event.title)}`)
+        if (event.description) {
+          ical.push(`DESCRIPTION:${escapeIcalField(event.description)}`)
+        }
+        if (event.category) {
+          ical.push(`CATEGORIES:${escapeIcalField(event.category)}`)
+        }
+        if (event.recurrence) {
+          ical.push(`RRULE:${formatRecurrenceRule(event.recurrence)}`)
+        }
         ical.push('END:VEVENT')
       })
 
@@ -307,18 +436,100 @@ export default {
 
     const convertNotesToTxt = (notes) => {
       return notes.map(note => {
-        return `${note.title}\n${'-'.repeat(note.title.length)}\n\n${note.content}\n\n`
+        const header = `${note.title}\n${'-'.repeat(note.title.length)}\n`
+        const metadata = `Categorie: ${note.category}\nCreat: ${formatDateFriendly(note.createdAt)}\nActualizat: ${formatDateFriendly(note.updatedAt)}\n`
+        const content = `\n${note.content}\n`
+        return `${header}${metadata}${content}\n${'='.repeat(80)}\n`
       }).join('\n')
     }
 
     const convertNotesToMd = (notes) => {
       return notes.map(note => {
-        return `# ${note.title}\n\n${note.content}\n\n---\n`
+        const header = `# ${note.title}\n\n`
+        const metadata = `> **Categorie:** ${note.category}  \n> **Creat:** ${formatDateFriendly(note.createdAt)}  \n> **Actualizat:** ${formatDateFriendly(note.updatedAt)}\n\n`
+        const content = `${note.content}\n\n`
+        return `${header}${metadata}${content}---\n`
       }).join('\n')
     }
 
+    // Helper functions
+    const escapeCsvField = (field) => {
+      if (field === null || field === undefined) return ''
+      const stringField = String(field)
+      if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+        return `"${stringField.replace(/"/g, '""')}"`
+      }
+      return stringField
+    }
+
+    const escapeIcalField = (field) => {
+      if (!field) return ''
+      return field
+        .replace(/[\\;,]/g, (match) => `\\${match}`)
+        .replace(/\n/g, '\\n')
+    }
+
+    const formatDateFriendly = (date, includeTime = false) => {
+      if (!date) return ''
+      const d = new Date(date)
+      const weekDays = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
+      const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie']
+      
+      const day = d.getDate()
+      const month = months[d.getMonth()]
+      const year = d.getFullYear()
+      const weekDay = weekDays[d.getDay()]
+      
+      if (!includeTime) {
+        return `${weekDay}, ${day} ${month} ${year}`
+      }
+      
+      const hours = String(d.getHours()).padStart(2, '0')
+      const minutes = String(d.getMinutes()).padStart(2, '0')
+      return `${weekDay}, ${day} ${month} ${year} la ${hours}:${minutes}`
+    }
+
     const formatDateToICal = (date) => {
-      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+      return date.toISOString()
+        .replace(/[-:]/g, '')
+        .replace(/\.\d{3}/, '')
+        .replace(/[+-]\d{2}:\d{2}/, 'Z')
+    }
+
+    const formatRecurrenceText = (recurrence) => {
+      const map = {
+        'daily': 'Zilnic',
+        'weekly': 'Săptămânal',
+        'monthly': 'Lunar',
+        'yearly': 'Anual'
+      }
+      return map[recurrence] || 'Fără recurență'
+    }
+
+    const formatNotifications = (notifications) => {
+      if (!notifications) return 'Fără notificări'
+      const types = []
+      if (notifications.email) types.push('Email')
+      if (notifications.push) types.push('Notificare push')
+      return types.length ? types.join(', ') : 'Fără notificări'
+    }
+
+    const formatRecurrenceRule = (recurrence) => {
+      switch (recurrence) {
+        case 'daily': return 'FREQ=DAILY'
+        case 'weekly': return 'FREQ=WEEKLY'
+        case 'monthly': return 'FREQ=MONTHLY'
+        case 'yearly': return 'FREQ=YEARLY'
+        default: return ''
+      }
+    }
+
+    const formatDateForFilename = (date) => {
+      const d = new Date(date)
+      const day = String(d.getDate()).padStart(2, '0')
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const year = d.getFullYear()
+      return `${day}_${month}_${year}`
     }
 
     const downloadFile = (content, filename, type) => {
@@ -333,12 +544,23 @@ export default {
       window.URL.revokeObjectURL(url)
     }
 
+    onMounted(() => {
+      loadData()
+    })
+
     return {
       exportFormat,
       exportOptions,
       exportTasks,
       exportCalendar,
-      exportNotes
+      exportNotes,
+      isLoading,
+      tasks,
+      events,
+      notes,
+      tasksButtonText,
+      eventsButtonText,
+      notesButtonText
     }
   }
 }
@@ -610,7 +832,7 @@ export default {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1400px) {
   .export-container {
     padding: 1.5rem;
   }
@@ -650,5 +872,31 @@ export default {
 .icon {
   font-size: 1.2rem;
   margin-right: 0.5rem;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--text);
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--primary);
 }
 </style> 
