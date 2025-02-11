@@ -39,6 +39,13 @@
               >
                 JSON
               </button>
+              <button 
+                @click="exportFormat.tasks = 'pdf'"
+                :class="{ active: exportFormat.tasks === 'pdf' }"
+                class="format-btn"
+              >
+                PDF
+              </button>
             </div>
           </div>
           <div class="export-options">
@@ -100,6 +107,13 @@
                 class="format-btn"
               >
                 iCal
+              </button>
+              <button 
+                @click="exportFormat.calendar = 'pdf'"
+                :class="{ active: exportFormat.calendar === 'pdf' }"
+                class="format-btn"
+              >
+                PDF
               </button>
             </div>
           </div>
@@ -163,6 +177,13 @@
               >
                 JSON
               </button>
+              <button 
+                @click="exportFormat.notes = 'pdf'"
+                :class="{ active: exportFormat.notes === 'pdf' }"
+                class="format-btn"
+              >
+                PDF
+              </button>
             </div>
           </div>
           <div class="export-options">
@@ -191,6 +212,8 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useStore } from 'vuex'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 export default {
   name: 'Export',
@@ -263,9 +286,54 @@ export default {
         if (exportFormat.value.tasks === 'csv') {
           const csv = convertTasksToCSV(filteredTasks)
           downloadFile(csv, 'tasks.csv', 'text/csv')
-        } else {
+        } else if (exportFormat.value.tasks === 'json') {
           const json = JSON.stringify(filteredTasks, null, 2)
           downloadFile(json, 'tasks.json', 'application/json')
+        } else if (exportFormat.value.tasks === 'pdf') {
+          const doc = new jsPDF('l', 'mm', 'a4', true)
+          doc.setFont('helvetica')
+          doc.setFontSize(20)
+          doc.text('Lista Sarcini', 20, 15)
+          
+          const tableData = filteredTasks.map(task => [
+            task.title,
+            task.description || '',
+            task.priority,
+            task.category || '',
+            formatDateFriendly(task.dueDate),
+            task.completed ? 'Completat' : 'În progres'
+          ])
+
+          doc.autoTable({
+            head: [['Titlu', 'Descriere', 'Prioritate', 'Categorie', 'Data Limită', 'Status']],
+            body: tableData,
+            startY: 25,
+            styles: { 
+              font: 'helvetica',
+              fontSize: 10, 
+              cellPadding: 4,
+              overflow: 'linebreak'
+            },
+            headStyles: { 
+              fillColor: [41, 128, 185], 
+              textColor: 255,
+              font: 'helvetica',
+              fontStyle: 'bold',
+              halign: 'center'
+            },
+            columnStyles: {
+              0: { cellWidth: 50 },
+              1: { cellWidth: 80 },
+              2: { cellWidth: 25 },
+              3: { cellWidth: 35 },
+              4: { cellWidth: 45 },
+              5: { cellWidth: 25 }
+            },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            theme: 'grid'
+          })
+
+          doc.save('tasks.pdf')
         }
         store.dispatch('notifications/add', {
           type: 'success',
@@ -320,9 +388,54 @@ export default {
           }))
           const json = JSON.stringify(cleanedEvents, null, 2)
           downloadFile(json, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.json`, 'application/json')
-        } else {
+        } else if (exportFormat.value.calendar === 'ical') {
           const ical = convertEventsToICal(filteredEvents)
           downloadFile(ical, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.ics`, 'text/calendar')
+        } else if (exportFormat.value.calendar === 'pdf') {
+          const doc = new jsPDF('l', 'mm', 'a4', true)
+          doc.setFont('helvetica')
+          doc.setFontSize(20)
+          doc.text('Calendar Evenimente', 20, 15)
+          
+          const tableData = filteredEvents.map(event => [
+            event.title,
+            event.description || '',
+            formatDateFriendly(event.startDate, true),
+            formatDateFriendly(event.endDate, true),
+            event.category || '',
+            formatRecurrenceText(event.recurrence)
+          ])
+
+          doc.autoTable({
+            head: [['Titlu', 'Descriere', 'Început', 'Sfârșit', 'Categorie', 'Recurență']],
+            body: tableData,
+            startY: 25,
+            styles: { 
+              font: 'helvetica',
+              fontSize: 10, 
+              cellPadding: 4,
+              overflow: 'linebreak'
+            },
+            headStyles: { 
+              fillColor: [46, 204, 113], 
+              textColor: 255,
+              font: 'helvetica',
+              fontStyle: 'bold',
+              halign: 'center'
+            },
+            columnStyles: {
+              0: { cellWidth: 50 },
+              1: { cellWidth: 80 },
+              2: { cellWidth: 45 },
+              3: { cellWidth: 45 },
+              4: { cellWidth: 25 },
+              5: { cellWidth: 25 }
+            },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            theme: 'grid'
+          })
+
+          doc.save(`evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.pdf`)
         }
         store.dispatch('notifications/add', {
           type: 'success',
@@ -354,9 +467,92 @@ export default {
         } else if (exportFormat.value.notes === 'md') {
           const md = convertNotesToMd(filteredNotes)
           downloadFile(md, 'notes.md', 'text/markdown')
-        } else {
+        } else if (exportFormat.value.notes === 'json') {
           const json = JSON.stringify(filteredNotes, null, 2)
           downloadFile(json, 'notes.json', 'application/json')
+        } else if (exportFormat.value.notes === 'pdf') {
+          const doc = new jsPDF('p', 'mm', 'a4', true)
+          doc.setFont('helvetica')
+          doc.setFontSize(20)
+          doc.text('Notițe', 14, 15)
+          
+          // Transform notes into table data
+          const tableData = filteredNotes.map(note => {
+            const metadata = `Creat: ${formatDateFriendly(note.createdAt)}\nActualizat: ${formatDateFriendly(note.updatedAt)}`
+            return [
+              note.title || '',
+              note.content || '',
+              note.category || '',
+              metadata
+            ]
+          })
+
+          doc.autoTable({
+            head: [['Titlu', 'Conținut', 'Categorie', 'Metadata']],
+            body: tableData,
+            startY: 25,
+            styles: { 
+              font: 'helvetica',
+              fontSize: 10, 
+              cellPadding: 6,
+              overflow: 'linebreak',
+              cellWidth: 'wrap',
+              valign: 'top',
+              minCellHeight: 10
+            },
+            headStyles: { 
+              fillColor: [33, 150, 243], 
+              textColor: 255,
+              font: 'helvetica',
+              fontStyle: 'bold',
+              halign: 'center',
+              minCellHeight: 10
+            },
+            columnStyles: {
+              0: { cellWidth: 40, fontStyle: 'bold' },
+              1: { cellWidth: 85 },
+              2: { cellWidth: 25 },
+              3: { cellWidth: 35, fontSize: 8 }
+            },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            theme: 'grid',
+            margin: { left: 10, right: 10 },
+            didDrawCell: function(data) {
+              // Add extra styling for title cells
+              if (data.column.index === 0 && data.cell.section === 'body') {
+                const cell = data.cell
+                doc.setFillColor(240, 240, 240)
+                doc.rect(cell.x, cell.y, cell.width, cell.height, 'F')
+              }
+            },
+            willDrawCell: function(data) {
+              // Customize content cell formatting
+              if (data.column.index === 1 && data.cell.section === 'body') {
+                const text = String(data.cell.text || '')
+                // Limit content length and add ellipsis if too long
+                if (text.length > 500) {
+                  data.cell.text = text.substring(0, 500) + '...'
+                }
+              }
+            },
+            didParseCell: function(data) {
+              // Ensure proper line breaks in content
+              if (data.column.index === 1 && data.cell.section === 'body') {
+                const text = String(data.cell.text || '')
+                data.cell.text = text.split('\n').filter(Boolean)
+              }
+              // Format metadata with line breaks
+              if (data.column.index === 3 && data.cell.section === 'body') {
+                data.cell.styles.fontSize = 8
+                data.cell.styles.textColor = [100, 100, 100]
+                if (typeof data.cell.text === 'string') {
+                  data.cell.text = data.cell.text.split('\n')
+                }
+              }
+            }
+          })
+
+          doc.save('notes.pdf')
         }
         store.dispatch('notifications/add', {
           type: 'success',
