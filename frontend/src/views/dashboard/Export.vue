@@ -1,14 +1,14 @@
 <template>
   <div class="export-container">
     <div class="export-header">
-      <h1>Export Date</h1>
-      <p class="export-description">Exportă datele tale în diferite formate</p>
+      <h1>Export Data</h1>
+      <p class="export-description">Export your data in different formats</p>
     </div>
 
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state">
       <span class="loading-spinner">⌛</span>
-      <p>Se încarcă datele...</p>
+      <p>Loading data...</p>
     </div>
 
     <!-- Export Grid -->
@@ -19,7 +19,7 @@
           <div class="icon-wrapper tasks">
             <span class="icon">📋</span>
           </div>
-          <h2>Export Sarcini</h2>
+          <h2>Export Tasks</h2>
         </div>
         <div class="card-content">
           <div class="format-selector">
@@ -54,14 +54,14 @@
                 type="checkbox" 
                 v-model="exportOptions.tasks.includeCompleted"
               >
-              Include sarcini completate
+              Include completed tasks
             </label>
             <label class="checkbox-label">
               <input 
                 type="checkbox" 
                 v-model="exportOptions.tasks.includeArchived"
               >
-              Include sarcini arhivate
+              Include archived tasks
             </label>
           </div>
           <button 
@@ -119,14 +119,14 @@
           </div>
           <div class="date-range">
             <div class="date-input">
-              <label>De la</label>
+              <label>From</label>
               <input 
                 type="date" 
                 v-model="exportOptions.calendar.startDate"
               >
             </div>
             <div class="date-input">
-              <label>Până la</label>
+              <label>To</label>
               <input 
                 type="date" 
                 v-model="exportOptions.calendar.endDate"
@@ -150,7 +150,7 @@
           <div class="icon-wrapper notes">
             <span class="icon">📝</span>
           </div>
-          <h2>Export Notițe</h2>
+          <h2>Export Notes</h2>
         </div>
         <div class="card-content">
           <div class="format-selector">
@@ -192,7 +192,7 @@
                 type="checkbox" 
                 v-model="exportOptions.notes.includeArchived"
               >
-              Include notițe arhivate
+              Include archived notes
             </label>
           </div>
           <button 
@@ -248,9 +248,9 @@ export default {
     const notes = computed(() => store.getters['notes/allNotes'])
 
     // Computed properties for button text
-    const tasksButtonText = computed(() => tasks.value.length ? 'Exportă Sarcini' : 'Nu există sarcini')
-    const eventsButtonText = computed(() => events.value.length ? 'Exportă Evenimente' : 'Nu există evenimente')
-    const notesButtonText = computed(() => notes.value.length ? 'Exportă Notițe' : 'Nu există notițe')
+    const tasksButtonText = computed(() => tasks.value.length ? 'Export Tasks' : 'No tasks available')
+    const eventsButtonText = computed(() => events.value.length ? 'Export Events' : 'No events available')
+    const notesButtonText = computed(() => notes.value.length ? 'Export Notes' : 'No notes available')
 
     const loadData = async () => {
       isLoading.value = true
@@ -264,7 +264,7 @@ export default {
         console.error('Error loading data:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Eroare la încărcarea datelor'
+          message: 'Error loading data'
         })
       } finally {
         isLoading.value = false
@@ -293,7 +293,7 @@ export default {
           const doc = new jsPDF('l', 'mm', 'a4', true)
           doc.setFont('helvetica')
           doc.setFontSize(20)
-          doc.text('Lista Sarcini', 20, 15)
+          doc.text('Tasks List', 20, 15)
           
           const tableData = filteredTasks.map(task => [
             task.title,
@@ -301,11 +301,11 @@ export default {
             task.priority,
             task.category || '',
             formatDateFriendly(task.dueDate),
-            task.completed ? 'Completat' : 'În progres'
+            task.completed ? 'Completed' : 'In Progress'
           ])
 
           doc.autoTable({
-            head: [['Titlu', 'Descriere', 'Prioritate', 'Categorie', 'Data Limită', 'Status']],
+            head: [['Title', 'Description', 'Priority', 'Category', 'Due Date', 'Status']],
             body: tableData,
             startY: 25,
             styles: { 
@@ -337,13 +337,13 @@ export default {
         }
         store.dispatch('notifications/add', {
           type: 'success',
-          message: 'Export sarcini realizat cu succes'
+          message: 'Tasks exported successfully'
         })
       } catch (error) {
         console.error('Error exporting tasks:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Eroare la exportul sarcinilor'
+          message: 'Error exporting tasks'
         })
       }
     }
@@ -368,34 +368,34 @@ export default {
         if (filteredEvents.length === 0) {
           store.dispatch('notifications/add', {
             type: 'warning',
-            message: 'Nu există evenimente în intervalul selectat'
+            message: 'No events in the selected time range'
           })
           return
         }
 
         if (exportFormat.value.calendar === 'csv') {
           const csv = convertEventsToCSV(filteredEvents)
-          downloadFile(csv, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.csv`, 'text/csv')
+          downloadFile(csv, `events_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.csv`, 'text/csv')
         } else if (exportFormat.value.calendar === 'json') {
           const cleanedEvents = filteredEvents.map(event => ({
-            titlu: event.title,
-            descriere: event.description,
-            dataStart: formatDateFriendly(event.startDate, true),
-            dataSfarsit: formatDateFriendly(event.endDate, true),
-            categorie: event.category,
-            recurenta: formatRecurrenceText(event.recurrence),
-            notificari: formatNotifications(event.notifications)
+            title: event.title,
+            description: event.description,
+            startDate: formatDateFriendly(event.startDate, true),
+            endDate: formatDateFriendly(event.endDate, true),
+            category: event.category,
+            recurrence: formatRecurrenceText(event.recurrence),
+            notifications: formatNotifications(event.notifications)
           }))
           const json = JSON.stringify(cleanedEvents, null, 2)
-          downloadFile(json, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.json`, 'application/json')
+          downloadFile(json, `events_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.json`, 'application/json')
         } else if (exportFormat.value.calendar === 'ical') {
           const ical = convertEventsToICal(filteredEvents)
-          downloadFile(ical, `evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.ics`, 'text/calendar')
+          downloadFile(ical, `events_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.ics`, 'text/calendar')
         } else if (exportFormat.value.calendar === 'pdf') {
           const doc = new jsPDF('l', 'mm', 'a4', true)
           doc.setFont('helvetica')
           doc.setFontSize(20)
-          doc.text('Calendar Evenimente', 20, 15)
+          doc.text('Calendar Events', 20, 15)
           
           const tableData = filteredEvents.map(event => [
             event.title,
@@ -407,7 +407,7 @@ export default {
           ])
 
           doc.autoTable({
-            head: [['Titlu', 'Descriere', 'Început', 'Sfârșit', 'Categorie', 'Recurență']],
+            head: [['Title', 'Description', 'Start', 'End', 'Category', 'Recurrence']],
             body: tableData,
             startY: 25,
             styles: { 
@@ -435,17 +435,17 @@ export default {
             theme: 'grid'
           })
 
-          doc.save(`evenimente_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.pdf`)
+          doc.save(`events_${formatDateForFilename(startDate)}_${formatDateForFilename(endDate)}.pdf`)
         }
         store.dispatch('notifications/add', {
           type: 'success',
-          message: 'Export calendar realizat cu succes'
+          message: 'Calendar exported successfully'
         })
       } catch (error) {
         console.error('Error exporting calendar:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Eroare la exportul calendarului'
+          message: 'Error exporting calendar'
         })
       }
     }
@@ -474,11 +474,10 @@ export default {
           const doc = new jsPDF('p', 'mm', 'a4', true)
           doc.setFont('helvetica')
           doc.setFontSize(20)
-          doc.text('Notițe', 14, 15)
+          doc.text('Notes', 14, 15)
           
-          // Transform notes into table data
           const tableData = filteredNotes.map(note => {
-            const metadata = `Creat: ${formatDateFriendly(note.createdAt)}\nActualizat: ${formatDateFriendly(note.updatedAt)}`
+            const metadata = `Created: ${formatDateFriendly(note.createdAt)}\nUpdated: ${formatDateFriendly(note.updatedAt)}`
             return [
               note.title || '',
               note.content || '',
@@ -488,7 +487,7 @@ export default {
           })
 
           doc.autoTable({
-            head: [['Titlu', 'Conținut', 'Categorie', 'Metadata']],
+            head: [['Title', 'Content', 'Category', 'Metadata']],
             body: tableData,
             startY: 25,
             styles: { 
@@ -510,72 +509,39 @@ export default {
             },
             columnStyles: {
               0: { cellWidth: 40, fontStyle: 'bold' },
-              1: { cellWidth: 85 },
-              2: { cellWidth: 25 },
+              1: { cellWidth: 75 },
+              2: { cellWidth: 35 },
               3: { cellWidth: 35, fontSize: 8 }
             },
             alternateRowStyles: { fillColor: [245, 245, 245] },
             theme: 'grid',
-            margin: { left: 10, right: 10 },
-            didDrawCell: function(data) {
-              // Add extra styling for title cells
-              if (data.column.index === 0 && data.cell.section === 'body') {
-                const cell = data.cell
-                doc.setFillColor(240, 240, 240)
-                doc.rect(cell.x, cell.y, cell.width, cell.height, 'F')
-              }
-            },
-            willDrawCell: function(data) {
-              // Customize content cell formatting
-              if (data.column.index === 1 && data.cell.section === 'body') {
-                const text = String(data.cell.text || '')
-                // Limit content length and add ellipsis if too long
-                if (text.length > 500) {
-                  data.cell.text = text.substring(0, 500) + '...'
-                }
-              }
-            },
-            didParseCell: function(data) {
-              // Ensure proper line breaks in content
-              if (data.column.index === 1 && data.cell.section === 'body') {
-                const text = String(data.cell.text || '')
-                data.cell.text = text.split('\n').filter(Boolean)
-              }
-              // Format metadata with line breaks
-              if (data.column.index === 3 && data.cell.section === 'body') {
-                data.cell.styles.fontSize = 8
-                data.cell.styles.textColor = [100, 100, 100]
-                if (typeof data.cell.text === 'string') {
-                  data.cell.text = data.cell.text.split('\n')
-                }
-              }
-            }
+            margin: { left: 10, right: 10 }
           })
 
           doc.save('notes.pdf')
         }
         store.dispatch('notifications/add', {
           type: 'success',
-          message: 'Export notițe realizat cu succes'
+          message: 'Notes exported successfully'
         })
       } catch (error) {
         console.error('Error exporting notes:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Eroare la exportul notițelor'
+          message: 'Error exporting notes'
         })
       }
     }
 
     const convertTasksToCSV = (tasks) => {
-      const headers = ['Titlu', 'Descriere', 'Prioritate', 'Categorie', 'Data Limită', 'Status', 'Creat', 'Actualizat']
+      const headers = ['Title', 'Description', 'Priority', 'Category', 'Due Date', 'Status', 'Created', 'Updated']
       const rows = tasks.map(task => [
         escapeCsvField(task.title),
         escapeCsvField(task.description),
         task.priority,
         escapeCsvField(task.category),
         formatDateFriendly(task.dueDate),
-        task.completed ? 'Completat' : 'În progres',
+        task.completed ? 'Completed' : 'In Progress',
         formatDateFriendly(task.createdAt),
         formatDateFriendly(task.updatedAt)
       ])
@@ -583,9 +549,8 @@ export default {
     }
 
     const convertEventsToCSV = (events) => {
-      const headers = ['Titlu', 'Descriere', 'Început', 'Sfârșit', 'Categorie', 'Recurență', 'Notificări']
+      const headers = ['Title', 'Description', 'Start', 'End', 'Category', 'Recurrence', 'Notifications']
       const rows = events.map(event => [
-        
         escapeCsvField(event.title),
         escapeCsvField(event.description),
         formatDateFriendly(event.startDate, true),
@@ -601,7 +566,7 @@ export default {
       let ical = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Momentum//Calendar//RO',
+        'PRODID:-//Momentum//Calendar//EN',
         'CALSCALE:GREGORIAN',
         'METHOD:PUBLISH',
         'X-WR-CALNAME:Momentum Calendar',
@@ -633,7 +598,7 @@ export default {
     const convertNotesToTxt = (notes) => {
       return notes.map(note => {
         const header = `${note.title}\n${'-'.repeat(note.title.length)}\n`
-        const metadata = `Categorie: ${note.category}\nCreat: ${formatDateFriendly(note.createdAt)}\nActualizat: ${formatDateFriendly(note.updatedAt)}\n`
+        const metadata = `Category: ${note.category}\nCreated: ${formatDateFriendly(note.createdAt)}\nUpdated: ${formatDateFriendly(note.updatedAt)}\n`
         const content = `\n${note.content}\n`
         return `${header}${metadata}${content}\n${'='.repeat(80)}\n`
       }).join('\n')
@@ -642,7 +607,7 @@ export default {
     const convertNotesToMd = (notes) => {
       return notes.map(note => {
         const header = `# ${note.title}\n\n`
-        const metadata = `> **Categorie:** ${note.category}  \n> **Creat:** ${formatDateFriendly(note.createdAt)}  \n> **Actualizat:** ${formatDateFriendly(note.updatedAt)}\n\n`
+        const metadata = `> **Category:** ${note.category}  \n> **Created:** ${formatDateFriendly(note.createdAt)}  \n> **Updated:** ${formatDateFriendly(note.updatedAt)}\n\n`
         const content = `${note.content}\n\n`
         return `${header}${metadata}${content}---\n`
       }).join('\n')
@@ -668,8 +633,8 @@ export default {
     const formatDateFriendly = (date, includeTime = false) => {
       if (!date) return ''
       const d = new Date(date)
-      const weekDays = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
-      const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie']
+      const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
       
       const day = d.getDate()
       const month = months[d.getMonth()]
@@ -682,7 +647,7 @@ export default {
       
       const hours = String(d.getHours()).padStart(2, '0')
       const minutes = String(d.getMinutes()).padStart(2, '0')
-      return `${weekDay}, ${day} ${month} ${year} la ${hours}:${minutes}`
+      return `${weekDay}, ${day} ${month} ${year} at ${hours}:${minutes}`
     }
 
     const formatDateToICal = (date) => {
@@ -694,20 +659,20 @@ export default {
 
     const formatRecurrenceText = (recurrence) => {
       const map = {
-        'daily': 'Zilnic',
-        'weekly': 'Săptămânal',
-        'monthly': 'Lunar',
-        'yearly': 'Anual'
+        'daily': 'Daily',
+        'weekly': 'Weekly',
+        'monthly': 'Monthly',
+        'yearly': 'Yearly'
       }
-      return map[recurrence] || 'Fără recurență'
+      return map[recurrence] || 'No recurrence'
     }
 
     const formatNotifications = (notifications) => {
-      if (!notifications) return 'Fără notificări'
+      if (!notifications) return 'No notifications'
       const types = []
       if (notifications.email) types.push('Email')
-      if (notifications.push) types.push('Notificare push')
-      return types.length ? types.join(', ') : 'Fără notificări'
+      if (notifications.push) types.push('Push notification')
+      return types.length ? types.join(', ') : 'No notifications'
     }
 
     const formatRecurrenceRule = (recurrence) => {

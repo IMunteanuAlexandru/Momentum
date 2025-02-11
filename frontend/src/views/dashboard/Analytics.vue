@@ -3,11 +3,6 @@
     <header class="page-header">
       <h1>Analytics</h1>
       <div class="header-actions">
-        <select v-model="timeRange" class="time-range-select" @change="fetchAnalyticsData">
-          <option value="week">Last Week</option>
-          <option value="month">Last Month</option>
-          <option value="year">Last Year</option>
-        </select>
         <button class="generate-report-btn" @click="generateReport">
           Generate Report
         </button>
@@ -57,7 +52,7 @@
 
         <div class="stat-card">
           <span class="icon">📅</span>
-          <h3>Evenimente Luna Curentă</h3>
+          <h3>Current Month Events</h3>
           <div class="stat-value">
             {{ analyticsData.stats.monthTotalEvents }}
             <span class="trend up"
@@ -67,7 +62,7 @@
 
         <div class="stat-card">
           <span class="icon">✅</span>
-          <h3>Evenimente Trecute</h3>
+          <h3>Past Events</h3>
           <div class="stat-value">
             {{ analyticsData.stats.monthPastEvents }}
             <span class="trend up"
@@ -80,10 +75,17 @@
       <div class="chart-container">
         <h2>Task Completion Progress</h2>
         <div class="progress-chart">
-          <div v-for="(bar, index) in analyticsData.progressData" :key="index" class="chart-bar"
-            :style="{ height: bar.height + '%' }">
+          <div v-for="(bar, index) in analyticsData.progressData" 
+               :key="index" 
+               class="chart-bar-wrapper">
+            <div class="chart-bar"
+                 :style="{ height: bar.height + '%' }">
+              <span class="bar-value">{{ bar.value }}%</span>
+            </div>
             <span class="bar-label">{{ bar.label }}</span>
-            <span class="bar-value">{{ bar.value }}%</span>
+            <div class="bar-details">
+              <small>{{ bar.details }}</small>
+            </div>
           </div>
         </div>
       </div>
@@ -126,7 +128,7 @@ const analyticsData = ref({
   recentActivity: []
 })
 
-const fetchAnalyticsData = async () => {
+const   fetchAnalyticsData = async () => {
   try {
     const auth = getAuth()
     const user = auth.currentUser
@@ -160,12 +162,16 @@ const fetchAnalyticsData = async () => {
 
       // Calculate start date based on selected time range
       if (timeRange.value === 'week') {
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - 7)
       } else if (timeRange.value === 'month') {
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        startDate = new Date(now)
+        startDate.setMonth(now.getMonth() - 1)
       } else {
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+        startDate = new Date(now)
+        startDate.setFullYear(now.getFullYear() - 1)
       }
+      startDate.setHours(0, 0, 0, 0)  // Set to start of day
 
       // Filter tasks by date range
       const filteredTasks = tasks.filter(task => {
@@ -181,7 +187,8 @@ const fetchAnalyticsData = async () => {
       // Calculate events statistics for current month
       const currentDate = new Date()
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
+      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+      lastDayOfMonth.setHours(23, 59, 59, 999)  // Set to end of the day
 
       // Filter events for current month
       const currentMonthEvents = events.filter(event => {
@@ -212,17 +219,42 @@ const fetchAnalyticsData = async () => {
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now)
         date.setDate(now.getDate() - i)
-        const dateStr = date.toISOString().split('T')[0]
-        progressData[dateStr] = { total: 0, completed: 0 }
+        date.setHours(0, 0, 0, 0) // Reset time to start of day
+        // Use local date string to avoid timezone issues
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        progressData[dateStr] = { 
+          tasks: { total: 0, completed: 0 },
+          events: { total: 0, completed: 0 }
+        }
       }
 
       // Fill in the task data
       filteredTasks.forEach(task => {
-        const date = new Date(task.dueDate).toISOString().split('T')[0]
-        if (progressData[date]) {
-          progressData[date].total++
+        const dueDate = new Date(task.dueDate)
+        // Use local date string to avoid timezone issues
+        const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`
+        
+        // Only count tasks that are due in our 7-day window
+        if (progressData.hasOwnProperty(dueDateStr)) {
+          progressData[dueDateStr].tasks.total++
           if (task.completed) {
-            progressData[date].completed++
+            progressData[dueDateStr].tasks.completed++
+          }
+        }
+      })
+
+      // Fill in the events data
+      events.forEach(event => {
+        const eventDate = new Date(event.endDate)
+        // Use local date string to avoid timezone issues
+        const eventDateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`
+        
+        // Only count events that end in our 7-day window
+        if (progressData.hasOwnProperty(eventDateStr)) {
+          progressData[eventDateStr].events.total++
+          // Consider an event completed if it has ended
+          if (eventDate <= now) {
+            progressData[eventDateStr].events.completed++
           }
         }
       })
@@ -231,16 +263,19 @@ const fetchAnalyticsData = async () => {
       const formattedProgress = Object.entries(progressData)
         .sort(([dateA], [dateB]) => new Date(dateA) - new Date(dateB))
         .map(([date, data]) => {
-          const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
+          const totalItems = data.tasks.total + data.events.total
+          const completedItems = data.tasks.completed + data.events.completed
+          const completionRate = totalItems > 0 ? (completedItems / totalItems) * 100 : 0
           return {
             label: new Date(date).toLocaleDateString('en-US', { 
               month: 'short',
               day: 'numeric'
             }),
             value: Math.round(completionRate),
-            height: Math.round(completionRate),
-            total: data.total,
-            completed: data.completed
+            height: Math.max(Math.round(completionRate), 5), // Minimum 5% height for visibility
+            total: totalItems,
+            completed: completedItems,
+            details: `Tasks: ${data.tasks.completed}/${data.tasks.total}, Events: ${data.events.completed}/${data.events.total}`
           }
         })
 
@@ -262,13 +297,13 @@ const fetchAnalyticsData = async () => {
               id: task.id,
               type: task.completed ? 'task_completed' : 'task_updated',
               description: `${task.completed ? 'Completed' : 'Updated'} task: ${task.title}`,
-              time: task.updatedAt
+              time: new Date(task.updatedAt).toISOString()
             })),
           ...currentMonthEvents.map(event => ({
             id: event.id,
             type: 'event',
             description: `${event.title}${event.description ? ` - ${event.description}` : ''}`,
-            time: event.startDate,
+            time: new Date(event.startDate).toISOString(),
             category: event.category
           }))
         ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 10)
@@ -284,11 +319,82 @@ const fetchAnalyticsData = async () => {
 
 const generateReport = async () => {
   try {
-    // TODO: Implement report generation
-    toast.info('Report generation will be implemented soon')
+    const auth = getAuth()
+    const user = auth.currentUser
+
+    if (!user) {
+      toast.error('Please login to generate report')
+      return
+    }
+
+    const token = await user.getIdToken()
+
+    // Get the current date for the filename and report
+    const date = new Date()
+    const dateStr = date.toLocaleDateString('en-En', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\//g, '-')
+
+    // Format recent activity data with better date formatting
+    const formattedActivity = analyticsData.value.recentActivity.map(activity => {
+      // Extract title and location from description, removing timestamp
+      const description = activity.description.replace(/\s*-\s*\d{4}-\d{2}-\d{2}T.*$/, '')
+      const parts = description.split(' - ')
+      const title = parts[0]
+      const location = parts.length > 1 ? parts[1] : ''
+      
+      // Format date and time using formatTime function
+      const formattedDate = formatTime(activity.time)
+      
+      // Build new formatted description
+      let formattedDescription = title
+      if (location) {
+        formattedDescription += `\n${location}`
+      }
+      formattedDescription += `\n${formattedDate}`
+
+      return {
+        ...activity,
+        description: formattedDescription
+      }
+    })
+
+    // Create report data
+    const reportData = {
+      generatedAt: formatTime(date),
+      stats: analyticsData.value.stats,
+      progressData: analyticsData.value.progressData,
+      recentActivity: formattedActivity
+    }
+
+    // Send request to generate report
+    const response = await axios.post('/api/reports/generate', 
+      { reportData },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'blob'
+      }
+    )
+
+    // Create a download link for the report
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `analytics-report-${dateStr}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+
+    toast.success('Report generated successfully')
   } catch (error) {
     console.error('Error generating report:', error)
-    toast.error('Failed to generate report')
+    toast.error('Error generating report')
   }
 }
 
@@ -309,17 +415,35 @@ const getActivityIcon = (type) => {
   return icons[type] || '❓'
 }
 
-const formatTime = (timestamp) => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  return date.toLocaleString('ro-RO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+const formatTime = (time) => {
+  if (!time) return ''
+  const date = new Date(time)
+  if (isNaN(date.getTime())) {
+    // Try parsing Firebase Timestamp format
+    const parts = time.split(' at ')
+    if (parts.length === 2) {
+      const [datePart, timePart] = parts
+      const [month, day, year] = datePart.split(' ')
+      const [timePart1, timezone] = timePart.split(' UTC')
+      const [hours, minutes, seconds] = timePart1.split(':')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const formattedHours = hours % 12 || 12
+      return `${day} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`
+    }
+    return time // Return original if can't parse
+  }
+  
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = date.toLocaleString('en-US', { month: 'long' })
+  const year = date.getFullYear()
+  const hours = date.getHours()
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const formattedHours = hours % 12 || 12
+  
+  return `${day} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`
 }
+
 
 onMounted(() => {
   fetchAnalyticsData()
@@ -439,6 +563,7 @@ h1 {
   background-color: var(--primary);
   border-radius: 12px;
   padding: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .chart-container h2 {
@@ -452,25 +577,33 @@ h1 {
   display: flex;
   align-items: flex-end;
   gap: 1rem;
-  padding: 1rem 0;
+  padding: 2rem 0;
+  position: relative;
+}
+
+.chart-bar-wrapper {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
 }
 
 .chart-bar {
-  flex: 1;
+  width: 100%;
   background-color: var(--secondary);
   border-radius: 8px 8px 0 0;
   position: relative;
   transition: height 0.3s ease;
-  min-height: 30px;
+  min-height: 2px;
 }
 
 .bar-label {
-  position: absolute;
-  bottom: -25px;
-  left: 50%;
-  transform: translateX(-50%);
+  margin-top: 8px;
   color: var(--text);
   font-size: 0.875rem;
+  text-align: center;
 }
 
 .bar-value {
@@ -480,6 +613,21 @@ h1 {
   transform: translateX(-50%);
   color: var(--text);
   font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.bar-details {
+  margin-top: 4px;
+  color: var(--text);
+  opacity: 0.7;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* Add hover effect */
+.chart-bar:hover {
+  opacity: 0.8;
+  cursor: pointer;
 }
 
 .activity-container {
@@ -522,6 +670,7 @@ h1 {
   color: var(--text);
   opacity: 0.7;
   font-size: 0.875rem;
+  font-style: italic;
 }
 
 @media (max-width: 768px) {

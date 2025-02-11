@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -9,6 +9,12 @@ from datetime import datetime, timedelta
 import schedule
 import time
 import threading
+from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 
 # Load environment variables
 load_dotenv()
@@ -295,7 +301,6 @@ def get_tasks():
             'status': 'error',
             'message': str(e)
         }), 400
-
 
 @app.route('/api/tasks', methods=['POST'])
 @check_token
@@ -821,6 +826,135 @@ def get_analytics_data():
         })
         
     except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/reports/generate', methods=['POST'])
+@check_token
+def generate_report():
+    try:
+        user_id = request.user['uid']
+        report_data = request.json.get('reportData')
+        
+        if not report_data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Report data is required'
+            }), 400
+
+        # Create a buffer for the PDF
+        buffer = BytesIO()
+        
+        # Create the PDF document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = styles['Heading1']
+        heading_style = styles['Heading2']
+        normal_style = styles['Normal']
+
+        # Create the story (content) for the PDF
+        story = []
+
+        # Add title
+        story.append(Paragraph('Analytics Report', title_style))
+        story.append(Spacer(1, 12))
+        story.append(Paragraph(f'Generated on: {report_data["generatedAt"]}', normal_style))
+        story.append(Spacer(1, 24))
+
+        # Add Statistics Section
+        story.append(Paragraph('Statistics Overview', heading_style))
+        story.append(Spacer(1, 12))
+
+        # Create statistics table data
+        stats_data = [
+            ['Metric', 'Value'],
+            ['Total Tasks', str(report_data['stats']['totalTasks'])],
+            ['Completed Tasks', str(report_data['stats']['completedTasks'])],
+            ['Pending Tasks', str(report_data['stats']['pendingTasks'])],
+            ['Productivity Score', f"{report_data['stats']['productivityScore']}%"],
+            ['Current Month Events', str(report_data['stats']['monthTotalEvents'])],
+            ['Past Events', str(report_data['stats']['monthPastEvents'])]
+        ]
+
+        # Create and style the statistics table
+        stats_table = Table(stats_data, colWidths=[4*inch, 2*inch])
+        stats_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(stats_table)
+        story.append(Spacer(1, 24))
+
+        # Add Progress Data Section
+        if report_data['progressData']:
+            story.append(Paragraph('Task Completion Progress', heading_style))
+            story.append(Spacer(1, 12))
+            
+            progress_data = [['Date', 'Completion Rate']]
+            for item in report_data['progressData']:
+                progress_data.append([item['label'], f"{item['value']}%"])
+
+            progress_table = Table(progress_data, colWidths=[4*inch, 2*inch])
+            progress_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 14),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(progress_table)
+            story.append(Spacer(1, 24))
+
+        # Add Recent Activity Section
+        if report_data['recentActivity']:
+            story.append(Paragraph('Recent Activity', heading_style))
+            story.append(Spacer(1, 12))
+            
+            for activity in report_data['recentActivity']:
+                activity_text = f"{activity['description']} - {activity['time']}"
+                story.append(Paragraph(activity_text, normal_style))
+                story.append(Spacer(1, 6))
+
+        # Build the PDF document
+        doc.build(story)
+        
+        # Prepare the response
+        buffer.seek(0)
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='analytics_report.pdf'
+        )
+
+    except Exception as e:
+        print(f"Error generating report: {str(e)}")  # Debug log
         return jsonify({
             'status': 'error',
             'message': str(e)

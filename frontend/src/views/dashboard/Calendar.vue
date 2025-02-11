@@ -3,7 +3,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state">
       <span class="loading-spinner">⌛</span>
-      <p>Se încarcă calendarul...</p>
+      <p>Loading calendar...</p>
     </div>
 
     <!-- Error State -->
@@ -11,7 +11,7 @@
       <p>{{ error }}</p>
       <button @click="retryLoading" class="btn-retry">
         <span class="icon">🔄</span>
-        Încearcă din nou
+        Try again
       </button>
     </div>
 
@@ -40,7 +40,7 @@
         </div>
         <button @click="showAddEvent = true" class="btn-add">
           <span class="icon">➕</span>
-          Adaugă eveniment
+          Add event
         </button>
       </div>
       
@@ -66,7 +66,7 @@
                 {{ event.title }}
               </div>
               <div v-if="day.events.length > 3" class="more-events" @click.stop="showAllEvents(day)">
-                +{{ day.events.length - 3 }} mai multe
+                +{{ day.events.length - 3 }} more
               </div>
             </div>
           </div>
@@ -135,46 +135,46 @@
       <!-- Add/Edit Event Modal -->
       <div v-if="showAddEvent || editingEvent" class="modal">
         <div class="modal-content">
-          <h2>{{ editingEvent ? 'Editează evenimentul' : 'Adaugă eveniment nou' }}</h2>
+          <h2>{{ editingEvent ? 'Edit event' : 'Add new event' }}</h2>
           <form @submit.prevent="saveEvent">
             <div class="form-group">
-              <label>Titlu</label>
+              <label>Title</label>
               <input v-model="eventForm.title" required>
             </div>
             <div class="form-group">
-              <label>Descriere</label>
+              <label>Description</label>
               <textarea v-model="eventForm.description"></textarea>
             </div>
             <div class="form-group">
-              <label>Data început</label>
+              <label>Start date</label>
               <input type="datetime-local" v-model="eventForm.startDate" required>
             </div>
             <div class="form-group">
-              <label>Data sfârșit</label>
+              <label>End date</label>
               <input type="datetime-local" v-model="eventForm.endDate" required>
             </div>
             <div class="form-group">
-              <label>Categorie</label>
+              <label>Category</label>
               <select v-model="eventForm.category" required>
-                <option value="meeting">Întâlnire</option>
-                <option value="event">Eveniment</option>
-                <option value="reminder">Memento</option>
-                <option value="birthday">Zi de naștere</option>
-                <option value="holiday">Sărbătoare</option>
+                <option value="meeting">Meeting</option>
+                <option value="event">Event</option>
+                <option value="reminder">Reminder</option>
+                <option value="birthday">Birthday</option>
+                <option value="holiday">Holiday</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Recurență</label>
+              <label>Recurrence</label>
               <select v-model="eventForm.recurrence">
-                <option value="">Fără recurență</option>
-                <option value="daily">Zilnic</option>
-                <option value="weekly">Săptămânal</option>
-                <option value="monthly">Lunar</option>
-                <option value="yearly">Anual</option>
+                <option value="">No recurrence</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Notificări</label>
+              <label>Notifications</label>
               <div class="notification-options">
                 <label>
                   <input 
@@ -192,7 +192,7 @@
             </div>
             <div class="modal-actions">
               <button type="submit" class="btn-save">
-                {{ editingEvent ? 'Salvează' : 'Adaugă' }}
+                {{ editingEvent ? 'Save' : 'Add' }}
               </button>
               <button 
                 v-if="editingEvent" 
@@ -200,10 +200,10 @@
                 @click="deleteEvent" 
                 class="btn-delete"
               >
-                Șterge
+                Delete
               </button>
               <button type="button" @click="closeEventModal" class="btn-cancel">
-                Anulează
+                Cancel
               </button>
             </div>
           </form>
@@ -230,12 +230,12 @@ export default {
     const user = computed(() => store.getters['auth/currentUser'])
     
     const views = [
-      { label: 'Lună', value: 'month' },
-      { label: 'Săptămână', value: 'week' },
-      { label: 'Zi', value: 'day' }
+      { label: 'Month', value: 'month' },
+      { label: 'Week', value: 'week' },
+      { label: 'Day', value: 'day' }
     ]
 
-    const weekDays = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică']
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
     const eventForm = ref({
       title: '',
@@ -252,7 +252,7 @@ export default {
 
     // Computed properties for calendar data
     const currentMonthYear = computed(() => {
-      return currentDate.value.toLocaleDateString('ro-RO', { 
+      return currentDate.value.toLocaleDateString('en-En', { 
         month: 'long', 
         year: 'numeric' 
       })
@@ -339,7 +339,7 @@ export default {
     }
 
     const formatWeekDay = (date) => {
-      return date.toLocaleDateString('ro-RO', { weekday: 'short' })
+      return date.toLocaleDateString('en-En', { weekday: 'short' })
     }
 
     const formatDayNumber = (date) => {
@@ -348,7 +348,7 @@ export default {
 
     const formatEventTime = (event) => {
       const start = new Date(event.startDate)
-      return start.toLocaleTimeString('ro-RO', { 
+      return start.toLocaleTimeString('en-En', { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
@@ -407,7 +407,7 @@ export default {
       if (!user.value) {
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Trebuie să fii autentificat pentru a salva evenimente'
+          message: 'You need to be authenticated to save events'
         })
         return
       }
@@ -421,7 +421,7 @@ export default {
           })
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Evenimentul a fost actualizat cu succes'
+            message: 'Event updated successfully'
           })
         } else {
           await store.dispatch('calendar/addEvent', {
@@ -431,7 +431,7 @@ export default {
           })
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Evenimentul a fost adăugat cu succes'
+            message: 'Event added successfully'
           })
         }
         closeEventModal()
@@ -439,25 +439,25 @@ export default {
         console.error('Error saving event:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Eroare la salvarea evenimentului'
+          message: 'Error saving event'
         })
       }
     }
 
     const deleteEvent = async () => {
-      if (confirm('Ești sigur că vrei să ștergi acest eveniment?')) {
+      if (confirm('Are you sure you want to delete this event?')) {
         try {
           await store.dispatch('calendar/deleteEvent', editingEvent.value.id)
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Evenimentul a fost șters cu succes'
+            message: 'Event deleted successfully'
           })
           closeEventModal()
         } catch (error) {
           console.error('Error deleting event:', error)
           store.dispatch('notifications/add', {
             type: 'error',
-            message: 'Eroare la ștergerea evenimentului'
+            message: 'Error deleting event'
           })
         }
       }
@@ -494,7 +494,7 @@ export default {
         isLoading.value = false
       } catch (err) {
         console.error('Error loading calendar data:', err)
-        error.value = 'A apărut o eroare la încărcarea calendarului. Te rugăm să încerci din nou.'
+        error.value = 'An error occurred while loading the calendar. Please try again.'
         isLoading.value = false
       }
     }

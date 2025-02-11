@@ -55,29 +55,10 @@
             <label class="switch-label">
               <span>Notificări Push</span>
               <div class="switch">
-                <input type="checkbox" v-model="pushNotifications">
+                <input type="checkbox" v-model="pushNotifications" @change="handlePushNotificationChange">
                 <span class="slider round"></span>
               </div>
             </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Language Section -->
-      <div class="settings-card">
-        <div class="card-header">
-          <div class="icon-wrapper language">
-            🌍
-          </div>
-          <h2>Limbă</h2>
-        </div>
-        <div class="card-content">
-          <div class="setting-group">
-            <label for="language-select">Limbă</label>
-            <select id="language-select" v-model="language" class="select-input">
-              <option value="ro">Română</option>
-              <option value="en">English</option>
-            </select>
           </div>
         </div>
       </div>
@@ -93,57 +74,153 @@
         Salvează Modificările
       </button>
     </div>
+
+    <!-- All CustomAlerts -->
+    <CustomAlert
+      v-model:show="showPermissionAlert"
+      title="Permisiune Notificări"
+      message="Pentru a primi notificări despre evenimente și task-uri, vă rugăm să acordați permisiunea necesară."
+      type="info"
+      confirmText="Permite"
+      cancelText="Nu acum"
+      :showCancel="true"
+      @confirm="requestNotificationPermission"
+      @cancel="handlePermissionDenied"
+    />
+
+    <CustomAlert
+      v-model:show="showUnsupportedAlert"
+      title="Incompatible Browser"
+      message="This browser does not support push notifications!"
+      type="error"
+      confirmText="I understand"
+      @confirm="handleUnsupportedBrowser"
+    />
+
+    <CustomAlert
+      v-model:show="showSuccessAlert"
+      title="Success"
+      message="Settings have been saved successfully!"
+      type="success"
+      confirmText="OK"
+      @confirm="hideSuccessAlert"
+    />
+
+    <CustomAlert
+      v-model:show="showResetAlert"
+      title="Reset Confirmation"
+      message="Are you sure you want to reset all settings to default values?"
+      type="warning"
+      confirmText="Yes, reset"
+      cancelText="No, cancel"
+      :showCancel="true"
+      @confirm="confirmReset"
+      @cancel="hideResetAlert"
+    />
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
+import notificationService from '@/services/NotificationService'
+import CustomAlert from '@/components/CustomAlert.vue'
 
 export default {
   name: 'Settings',
+  components: {
+    CustomAlert
+  },
   setup() {
     const store = useStore()
     const currentTheme = ref('theme-modern')
     const emailNotifications = ref(true)
     const pushNotifications = ref(true)
-    const timeFormat24h = ref(true)
-    const dateFormat = ref('DD/MM/YYYY')
-    const language = ref('ro')
+    
+    // Alert states
+    const showPermissionAlert = ref(false)
+    const showUnsupportedAlert = ref(false)
+    const showSuccessAlert = ref(false)
+    const showResetAlert = ref(false)
+
+    // Alert handlers
+    const hideSuccessAlert = () => {
+      showSuccessAlert.value = false;
+    }
+
+    const hideResetAlert = () => {
+      showResetAlert.value = false;
+    }
+
+    const handleUnsupportedBrowser = () => {
+      showUnsupportedAlert.value = false;
+      pushNotifications.value = false;
+    }
+
+    const handlePermissionDenied = () => {
+      pushNotifications.value = false;
+      showPermissionAlert.value = false;
+    }
+
+    const requestNotificationPermission = async () => {
+      if (!("Notification" in window)) {
+        showUnsupportedAlert.value = true;
+        return;
+      }
+
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          pushNotifications.value = false;
+        } else {
+          notificationService.start();
+        }
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        pushNotifications.value = false;
+      }
+      showPermissionAlert.value = false;
+    }
+
+    const handlePushNotificationChange = async () => {
+      if (pushNotifications.value) {
+        if (Notification.permission === "default") {
+          showPermissionAlert.value = true;
+        } else if (Notification.permission === "granted") {
+          notificationService.start();
+        } else {
+          pushNotifications.value = false;
+        }
+      } else {
+        notificationService.stop();
+      }
+    }
 
     const handleThemeChange = () => {
       localStorage.setItem('theme', currentTheme.value)
       document.documentElement.className = currentTheme.value
-      // Refresh the page
       window.location.reload()
     }
 
     const saveSettings = () => {
-      // Save all settings
       localStorage.setItem('emailNotifications', emailNotifications.value)
       localStorage.setItem('pushNotifications', pushNotifications.value)
-      localStorage.setItem('timeFormat24h', timeFormat24h.value)
-      localStorage.setItem('dateFormat', dateFormat.value)
-      localStorage.setItem('language', language.value)
-      
-      // Show success message
-      alert('Setările au fost salvate cu succes!')
+      showSuccessAlert.value = true;
+    }
+
+    const confirmReset = () => {
+      currentTheme.value = 'theme-modern'
+      emailNotifications.value = true
+      pushNotifications.value = true
+      handleThemeChange()
+      showResetAlert.value = false;
     }
 
     const resetSettings = () => {
-      if (confirm('Ești sigur că vrei să resetezi toate setările la valorile implicite?')) {
-        currentTheme.value = 'theme-modern'
-        emailNotifications.value = true
-        pushNotifications.value = true
-        timeFormat24h.value = true
-        dateFormat.value = 'DD/MM/YYYY'
-        language.value = 'ro'
-        handleThemeChange()
-      }
+      showResetAlert.value = true;
     }
 
     onMounted(() => {
-      // Load saved settings
       const savedTheme = localStorage.getItem('theme')
       if (savedTheme) {
         currentTheme.value = savedTheme
@@ -152,17 +229,34 @@ export default {
       
       emailNotifications.value = localStorage.getItem('emailNotifications') !== 'false'
       pushNotifications.value = localStorage.getItem('pushNotifications') !== 'false'
-      language.value = localStorage.getItem('language') || 'ro'
+      
+      if (pushNotifications.value) {
+        requestNotificationPermission();
+      }
+    })
+
+    onUnmounted(() => {
+      notificationService.stop();
     })
 
     return {
       currentTheme,
       emailNotifications,
       pushNotifications,
-      language,
+      showPermissionAlert,
+      showUnsupportedAlert,
+      showSuccessAlert,
+      showResetAlert,
+      handlePushNotificationChange,
       handleThemeChange,
       saveSettings,
-      resetSettings
+      resetSettings,
+      requestNotificationPermission,
+      handlePermissionDenied,
+      handleUnsupportedBrowser,
+      hideSuccessAlert,
+      hideResetAlert,
+      confirmReset
     }
   }
 }
@@ -232,7 +326,6 @@ export default {
 
 .appearance { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
 .notifications { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
-.language { background: linear-gradient(135deg, #9C27B0, #E91E63); }
 
 .card-header h2 {
   color: var(--text);
