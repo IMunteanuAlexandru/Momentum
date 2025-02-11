@@ -122,7 +122,8 @@ export default {
           uid: result.user.uid
         })
         
-        const token = await result.user.getIdToken()
+        // Obține un token de lungă durată
+        const token = await result.user.getIdToken(true)
         console.log('Got ID token')
         localStorage.setItem('token', token)
 
@@ -166,7 +167,7 @@ export default {
         
         // Curăță token-ul dacă există o eroare
         localStorage.removeItem('token')
-      } finally {
+      
         loading.value = false
       }
     }

@@ -1,7 +1,7 @@
 <template>
   <div class="tasks-container">
     <div class="tasks-header">
-      <h1>Sarcini</h1>
+      <h1>Tasks</h1>
       <div class="task-controls">
         <div class="search-filter">
           <div class="search-input-wrapper">
@@ -9,23 +9,23 @@
             <input 
               v-model="searchQuery" 
               type="text" 
-              placeholder="Caută sarcini..."
+              placeholder="Search tasks..."
               class="search-input"
             >
           </div>
           <div class="select-wrapper">
             <span class="priority-icon">⏰</span>
             <select v-model="filterPriority" class="filter-select">
-              <option value="">Toate prioritățile</option>
-              <option value="high">Prioritate înaltă</option>
-              <option value="medium">Prioritate medie</option>
-              <option value="low">Prioritate joasă</option>
+              <option value="">All priorities</option>
+              <option value="high">High priority</option>
+              <option value="medium">Medium priority</option>
+              <option value="low">Low priority</option>
             </select>
           </div>
           <div class="select-wrapper">
             <span class="category-icon">📁</span>
             <select v-model="filterCategory" class="filter-select">
-              <option value="">Toate categoriile</option>
+              <option value="">All categories</option>
               <option v-for="category in categories" 
                       :key="category" 
                       :value="category">
@@ -35,20 +35,20 @@
           </div>
         </div>
         <button @click="showAddTask = true" class="btn-add">
-          ➕ Adaugă sarcină nouă
+          ➕ Add new task
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
-      <p>Se încarcă sarcinile...</p>
+      <p>Loading tasks...</p>
     </div>
 
     <!-- Error State -->
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
-      <button @click="fetchTasks" class="btn-retry">Încearcă din nou</button>
+      <button @click="fetchTasks" class="btn-retry">Try again</button>
     </div>
 
     <!-- Tasks List -->
@@ -85,17 +85,17 @@
             :disabled="task.completed"
             :class="{ 'btn-disabled': task.completed }"
           >
-            ✎ Editează
+            ✎ Edit
           </button>
           <button @click="deleteTask(task.id)" class="btn-delete">
-            🗑️ Șterge
+            🗑️ Delete
           </button>
         </div>
       </div>
 
       <!-- Past Tasks Divider -->
       <div v-if="filteredTasks.pastTasks.length > 0" class="past-tasks-divider">
-        <span>Sarcini anterioare</span>
+        <span>Past tasks</span>
       </div>
 
       <!-- Past Tasks -->
@@ -130,43 +130,43 @@
             :disabled="task.completed"
             :class="{ 'btn-disabled': task.completed }"
           >
-            ✎ Editează
+            ✎ Edit
           </button>
           <button @click="deleteTask(task.id)" class="btn-delete">
-            🗑️ Șterge
+            🗑️ Delete
           </button>
         </div>
       </div>
 
       <!-- No Tasks State -->
       <div v-if="filteredTasks.currentTasks.length === 0 && filteredTasks.pastTasks.length === 0" class="no-tasks">
-        Nu există sarcini disponibile
+        No tasks available
       </div>
     </div>
 
     <!-- Add/Edit Task Modal -->
     <div v-if="showAddTask || editingTask" class="modal">
       <div class="modal-content">
-        <h2>{{ editingTask ? 'Editează sarcina' : 'Adaugă sarcină nouă' }}</h2>
+        <h2>{{ editingTask ? 'Edit task' : 'Add new task' }}</h2>
         <form @submit.prevent="saveTask">
           <div class="form-group">
-            <label>Titlu</label>
+            <label>Title</label>
             <input v-model="taskForm.title" required>
           </div>
           <div class="form-group">
-            <label>Descriere</label>
+            <label>Description</label>
             <textarea v-model="taskForm.description"></textarea>
           </div>
           <div class="form-group">
-            <label>Prioritate</label>
+            <label>Priority</label>
             <select v-model="taskForm.priority" required>
-              <option value="high">Înaltă</option>
-              <option value="medium">Medie</option>
-              <option value="low">Joasă</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Categorie</label>
+            <label>Category</label>
             <select v-model="taskForm.category" required>
               <option v-for="category in categories" 
                       :key="category" 
@@ -176,15 +176,15 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Data limită</label>
+            <label>Due date</label>
             <input type="date" v-model="taskForm.dueDate" required>
           </div>
           <div class="modal-actions">
             <button type="submit" class="btn-save">
-              {{ editingTask ? 'Salvează' : 'Adaugă' }}
+              {{ editingTask ? 'Save' : 'Add' }}
             </button>
             <button type="button" @click="closeTaskModal" class="btn-cancel">
-              Anulează
+              Cancel
             </button>
           </div>
         </form>
@@ -194,11 +194,11 @@
     <!-- Adăugăm modalul de confirmare -->
     <div v-if="showConfirmModal" class="confirm-modal">
       <div class="confirm-modal-content">
-        <h3>Confirmă acțiunea</h3>
+        <h3>Confirm action</h3>
         <p>{{ confirmMessage }}</p>
         <div class="confirm-modal-actions">
-          <button @click="handleConfirm" class="btn-confirm">Confirmă</button>
-          <button @click="closeConfirmModal" class="btn-cancel">Anulează</button>
+          <button @click="handleConfirm" class="btn-confirm">Confirm</button>
+          <button @click="closeConfirmModal" class="btn-cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -231,12 +231,12 @@ export default {
     })
 
     const categories = [
-      'Muncă',
+      'Work',
       'Personal',
-      'Cumpărături',
-      'Sănătate',
-      'Educație',
-      'Altele'
+      'Shopping',
+      'Health',
+      'Education',
+      'Other'
     ]
 
     const loading = computed(() => store.getters['tasks/loading'])
@@ -327,7 +327,7 @@ export default {
 
     const formatDate = (date) => {
       if (!date) return ''
-      return new Date(date).toLocaleDateString('ro-RO')
+      return new Date(date).toLocaleDateString('en-US')
     }
 
     const fetchTasks = async () => {
@@ -364,20 +364,20 @@ export default {
           }
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Sarcina a fost marcată ca finalizată'
+            message: 'Task marked as completed'
           })
         } else if (pendingAction.value === 'delete') {
           await store.dispatch('tasks/deleteTask', pendingTaskId.value)
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Sarcina a fost ștearsă cu succes'
+            message: 'Task deleted successfully'
           })
         }
       } catch (error) {
         console.error('Error:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'A apărut o eroare la procesarea cererii'
+          message: 'Error processing request'
         })
       }
       closeConfirmModal()
@@ -391,7 +391,7 @@ export default {
 
       pendingTaskId.value = taskId
       pendingAction.value = 'complete'
-      confirmMessage.value = 'Ești sigur că vrei să marchezi această sarcină ca finalizată? Această acțiune nu poate fi anulată.'
+      confirmMessage.value = 'Are you sure you want to mark this task as completed? This action cannot be undone.'
       showConfirmModal.value = true
     }
 
@@ -409,7 +409,7 @@ export default {
     const deleteTask = async (taskId) => {
       pendingTaskId.value = taskId
       pendingAction.value = 'delete'
-      confirmMessage.value = 'Ești sigur că vrei să ștergi această sarcină? Această acțiune nu poate fi anulată.'
+      confirmMessage.value = 'Are you sure you want to delete this task? This action cannot be undone.'
       showConfirmModal.value = true
     }
 
@@ -422,13 +422,13 @@ export default {
           })
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Sarcina a fost actualizată cu succes'
+            message: 'Task updated successfully'
           })
         } else {
           await store.dispatch('tasks/addTask', taskForm.value)
           store.dispatch('notifications/add', {
             type: 'success',
-            message: 'Sarcina a fost adăugată cu succes'
+            message: 'Task added successfully'
           })
         }
         closeTaskModal()
@@ -436,7 +436,7 @@ export default {
         console.error('Error saving task:', error)
         store.dispatch('notifications/add', {
           type: 'error',
-          message: 'Eroare la salvarea sarcinii'
+          message: 'Error saving task'
         })
       }
     }
