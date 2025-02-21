@@ -55,8 +55,7 @@
           <h3>Current Month Events</h3>
           <div class="stat-value">
             {{ analyticsData.stats.monthTotalEvents }}
-            <span class="trend up"
-              v-if="analyticsData.stats.monthTotalEvents > 0">⬆️</span>
+            <span class="trend up" v-if="analyticsData.stats.monthTotalEvents > 0">⬆️</span>
           </div>
         </div>
 
@@ -75,11 +74,8 @@
       <div class="chart-container">
         <h2>Task Completion Progress</h2>
         <div class="progress-chart">
-          <div v-for="(bar, index) in analyticsData.progressData" 
-               :key="index" 
-               class="chart-bar-wrapper">
-            <div class="chart-bar"
-                 :style="{ height: bar.height + '%' }">
+          <div v-for="(bar, index) in analyticsData.progressData" :key="index" class="chart-bar-wrapper">
+            <div class="chart-bar" :style="{ height: bar.height + '%' }">
               <span class="bar-value">{{ bar.value }}%</span>
             </div>
             <span class="bar-label">{{ bar.label }}</span>
@@ -128,7 +124,7 @@ const analyticsData = ref({
   recentActivity: []
 })
 
-const   fetchAnalyticsData = async () => {
+const fetchAnalyticsData = async () => {
   try {
     const auth = getAuth()
     const user = auth.currentUser
@@ -174,10 +170,32 @@ const   fetchAnalyticsData = async () => {
       startDate.setHours(0, 0, 0, 0)  // Set to start of day
 
       // Filter tasks by date range
+      // Check if 'tasks' is a valid array
+      if (!Array.isArray(tasks)) {
+        console.error("Tasks are not in a valid array format");
+        return;
+      }
+
+      // Filter the tasks based on the 'createdAt' date
       const filteredTasks = tasks.filter(task => {
-        const taskDate = new Date(task.createdAt)
-        return taskDate >= startDate && taskDate <= now
-      })
+        // Check if 'createdAt' exists and is a valid string
+        if (!task.createdAt || typeof task.createdAt !== 'string') {
+          console.error("Invalid createdAt format:", task.createdAt);
+          return false;
+        }
+
+        // Convert 'createdAt' to a Date object
+        const taskDate = new Date(task.createdAt);
+
+        // Check if the date is valid
+        if (isNaN(taskDate)) {
+          console.error("Invalid date format:", task.createdAt);
+          return false;
+        }
+
+        // Filter tasks with 'createdAt' greater than or equal to a specific date
+        return taskDate >= new Date("2025-01-01");
+      });
 
       // Calculate task statistics
       const totalTasks = filteredTasks.length
@@ -194,7 +212,7 @@ const   fetchAnalyticsData = async () => {
       const currentMonthEvents = events.filter(event => {
         const eventStartDate = new Date(event.startDate)
         const eventEndDate = new Date(event.endDate)
-        
+
         // Event is in current month if:
         // 1. Start date is in current month OR
         // 2. End date is in current month OR
@@ -214,7 +232,7 @@ const   fetchAnalyticsData = async () => {
 
       // Calculate progress data
       const progressData = {}
-      
+
       // Generate data for last 7 days
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now)
@@ -222,7 +240,7 @@ const   fetchAnalyticsData = async () => {
         date.setHours(0, 0, 0, 0) // Reset time to start of day
         // Use local date string to avoid timezone issues
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-        progressData[dateStr] = { 
+        progressData[dateStr] = {
           tasks: { total: 0, completed: 0 },
           events: { total: 0, completed: 0 }
         }
@@ -233,7 +251,7 @@ const   fetchAnalyticsData = async () => {
         const dueDate = new Date(task.dueDate)
         // Use local date string to avoid timezone issues
         const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`
-        
+
         // Only count tasks that are due in our 7-day window
         if (progressData.hasOwnProperty(dueDateStr)) {
           progressData[dueDateStr].tasks.total++
@@ -248,7 +266,7 @@ const   fetchAnalyticsData = async () => {
         const eventDate = new Date(event.endDate)
         // Use local date string to avoid timezone issues
         const eventDateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`
-        
+
         // Only count events that end in our 7-day window
         if (progressData.hasOwnProperty(eventDateStr)) {
           progressData[eventDateStr].events.total++
@@ -267,7 +285,7 @@ const   fetchAnalyticsData = async () => {
           const completedItems = data.tasks.completed + data.events.completed
           const completionRate = totalItems > 0 ? (completedItems / totalItems) * 100 : 0
           return {
-            label: new Date(date).toLocaleDateString('en-US', { 
+            label: new Date(date).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric'
             }),
@@ -344,10 +362,10 @@ const generateReport = async () => {
       const parts = description.split(' - ')
       const title = parts[0]
       const location = parts.length > 1 ? parts[1] : ''
-      
+
       // Format date and time using formatTime function
       const formattedDate = formatTime(activity.time)
-      
+
       // Build new formatted description
       let formattedDescription = title
       if (location) {
@@ -370,7 +388,7 @@ const generateReport = async () => {
     }
 
     // Send request to generate report
-    const response = await axios.post('/api/reports/generate', 
+    const response = await axios.post('/api/reports/generate',
       { reportData },
       {
         headers: {
@@ -418,21 +436,6 @@ const getActivityIcon = (type) => {
 const formatTime = (time) => {
   if (!time) return ''
   const date = new Date(time)
-  if (isNaN(date.getTime())) {
-    // Try parsing Firebase Timestamp format
-    const parts = time.split(' at ')
-    if (parts.length === 2) {
-      const [datePart, timePart] = parts
-      const [month, day, year] = datePart.split(' ')
-      const [timePart1, timezone] = timePart.split(' UTC')
-      const [hours, minutes, seconds] = timePart1.split(':')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const formattedHours = hours % 12 || 12
-      return `${day} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`
-    }
-    return time // Return original if can't parse
-  }
-  
   const day = date.getDate().toString().padStart(2, '0')
   const month = date.toLocaleString('en-US', { month: 'long' })
   const year = date.getFullYear()
@@ -440,7 +443,7 @@ const formatTime = (time) => {
   const minutes = date.getMinutes().toString().padStart(2, '0')
   const ampm = hours >= 12 ? 'PM' : 'AM'
   const formattedHours = hours % 12 || 12
-  
+
   return `${day} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`
 }
 

@@ -36,8 +36,6 @@ const actions = {
       const token = rootGetters['auth/token']
       if (token) {
         await dispatch('fetchEvents')
-      } else {
-        console.log('No authentication token available')
       }
     } catch (error) {
       console.error('Error initializing events:', error)
