@@ -23,6 +23,10 @@
           <span class="nav-icon">📝</span>
           Notes
         </router-link>
+        <router-link to="/dashboard/focus" class="nav-item">
+          <span class="nav-icon">⏱️</span>
+          Focus
+        </router-link>
         <router-link to="/dashboard/export" class="nav-item">
           <span class="nav-icon">📤</span>
           <span>Export</span>

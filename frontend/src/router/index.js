@@ -12,6 +12,7 @@ const Notes = () => import('../views/dashboard/Notes.vue')
 const Analytics = () => import('../views/dashboard/Analytics.vue')
 const Export = () => import('../views/dashboard/Export.vue')
 const Settings = () => import('../views/Settings.vue')
+const Focus = () => import('../views/Focus.vue')
 
 const routes = [
   {
@@ -68,6 +69,11 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: Settings
+      },
+      {
+        path: 'focus',
+        name: 'Focus',
+        component: Focus
       }
     ]
   },
