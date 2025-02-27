@@ -107,14 +107,131 @@
         </div>
       </div>
     </div>
+
+    <!-- Dialog confirmare Task -->
+    <div v-if="showTaskConfirmation" class="modal-overlay">
+      <div class="modal-content">
+        <h2>Confirmare Task</h2>
+        <div class="edit-form">
+          <div class="form-group">
+            <label>Titlu:</label>
+            <input v-model="pendingTask.title" type="text" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Descriere:</label>
+            <textarea v-model="pendingTask.description" class="form-input"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Categorie:</label>
+            <select v-model="pendingTask.category" class="form-input">
+              <option value="Work">Muncă</option>
+              <option value="Personal">Personal</option>
+              <option value="Shopping">Cumpărături</option>
+              <option value="Health">Sănătate</option>
+              <option value="Education">Educație</option>
+              <option value="Other">Altele</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Prioritate:</label>
+            <select v-model="pendingTask.priority" class="form-input">
+              <option value="high">Mare</option>
+              <option value="medium">Medie</option>
+              <option value="low">Mică</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Data:</label>
+            <input 
+              v-model="taskDueDate" 
+              type="date" 
+              class="form-input"
+              :min="new Date().toISOString().split('T')[0]"
+            >
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-confirm" @click="confirmTask">Confirmă</button>
+          <button class="btn-cancel" @click="cancelTask">Anulează</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog confirmare Event -->
+    <div v-if="showEventConfirmation" class="modal-overlay">
+      <div class="modal-content">
+        <h2>Confirmare Eveniment</h2>
+        <div class="edit-form">
+          <div class="form-group">
+            <label>Titlu:</label>
+            <input v-model="pendingEvent.title" type="text" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Descriere:</label>
+            <textarea v-model="pendingEvent.description" class="form-input"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Categorie:</label>
+            <select v-model="pendingEvent.category" class="form-input">
+              <option value="Meeting">Întâlnire</option>
+              <option value="Event">Eveniment</option>
+              <option value="Reminder">Reminder</option>
+              <option value="Birthday">Zi de naștere</option>
+              <option value="Holiday">Sărbătoare</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Data și ora început:</label>
+            <input 
+              v-model="eventStartDateTime" 
+              type="datetime-local" 
+              class="form-input"
+              :min="new Date().toISOString().slice(0, 16)"
+            >
+          </div>
+          <div class="form-group">
+            <label>Data și ora sfârșit:</label>
+            <input 
+              v-model="eventEndDateTime" 
+              type="datetime-local" 
+              class="form-input"
+              :min="eventStartDateTime"
+            >
+          </div>
+          <div class="form-group">
+            <label>Recurență:</label>
+            <select v-model="pendingEvent.recurrence" class="form-input">
+              <option value="No recurrence">Fără recurență</option>
+              <option value="Daily">Zilnic</option>
+              <option value="Weekly">Săptămânal</option>
+              <option value="Yearly">Anual</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                v-model="pendingEvent.notifications.email"
+              >
+              Notificări pe email
+            </label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-confirm" @click="confirmEvent">Confirmă</button>
+          <button class="btn-cancel" @click="cancelEvent">Anulează</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import { getAuth } from 'firebase/auth'
+import CustomAlert from '@/components/CustomAlert.vue'
 
 const toast = useToast()
 const timeRange = ref('week')
@@ -134,9 +251,108 @@ const analyticsData = ref({
 const voiceAssistant = ref(false)
 const recognition = ref(null)
 
+// Adaugă state pentru confirmări
+const showTaskConfirmation = ref(false)
+const showEventConfirmation = ref(false)
+const pendingTask = ref({
+  title: '',
+  description: '',
+  category: 'Personal',
+  priority: 'medium',
+  dueDate: new Date()
+})
+const pendingEvent = ref({
+  title: '',
+  description: '',
+  startDate: new Date(),
+  endDate: new Date(new Date().getTime() + 3600000), // +1 oră
+  category: 'Meeting',
+  recurrence: 'No recurrence',
+  notifications: { email: false }
+})
+
+const formatTaskData = computed(() => {
+  const taskData = {
+    title: pendingTask.value.title,
+    description: pendingTask.value.description,
+    category: pendingTask.value.category,
+    priority: pendingTask.value.priority,
+    dueDate: pendingTask.value.dueDate?.toISOString().split('T')[0],
+    completed: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  return JSON.stringify(taskData, null, 2);
+});
+
+const formatEventData = computed(() => {
+  const eventData = {
+    title: pendingEvent.value.title,
+    description: pendingEvent.value.description,
+    startDate: pendingEvent.value.startDate?.toISOString(),
+    endDate: pendingEvent.value.endDate?.toISOString(),
+    category: pendingEvent.value.category,
+    recurrence: pendingEvent.value.recurrence,
+    notifications: pendingEvent.value.notifications,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  return JSON.stringify(eventData, null, 2);
+});
+
+const taskDueDate = computed({
+  get: () => {
+    if (!pendingTask.value.dueDate) return new Date().toISOString().split('T')[0];
+    
+    // Ajustăm data pentru afișare
+    const date = new Date(pendingTask.value.dueDate);
+    const offset = date.getTimezoneOffset();
+    const adjustedDate = new Date(date.getTime() + (offset * 60 * 1000));
+    return adjustedDate.toISOString().split('T')[0];
+  },
+  set: (value) => {
+    // Când setăm o nouă dată, o creăm în UTC
+    const date = new Date(value);
+    pendingTask.value.dueDate = new Date(Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ));
+  }
+});
+
+const eventStartDateTime = computed({
+  get: () => {
+    if (!pendingEvent.value.startDate) return new Date().toISOString().slice(0, 16);
+    return new Date(pendingEvent.value.startDate).toISOString().slice(0, 16);
+  },
+  set: (value) => {
+    const date = new Date(value);
+    pendingEvent.value.startDate = date;
+    
+    // Actualizează automat data de sfârșit dacă e necesară
+    if (pendingEvent.value.endDate < date) {
+      pendingEvent.value.endDate = new Date(date.getTime() + 3600000); // +1 oră
+    }
+  }
+});
+
+const eventEndDateTime = computed({
+  get: () => {
+    if (!pendingEvent.value.endDate) {
+      const defaultEnd = new Date();
+      defaultEnd.setHours(defaultEnd.getHours() + 1);
+      return defaultEnd.toISOString().slice(0, 16);
+    }
+    return new Date(pendingEvent.value.endDate).toISOString().slice(0, 16);
+  },
+  set: (value) => {
+    pendingEvent.value.endDate = new Date(value);
+  }
+});
+
 const initializeSpeechRecognition = () => {
   if (!('webkitSpeechRecognition' in window)) {
-    console.error('Speech recognition not supported');
     return;
   }
 
@@ -147,8 +363,7 @@ const initializeSpeechRecognition = () => {
 
   recognition.value.onresult = (event) => {
     const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
-    console.log('Comandă primită:', transcript);
-    // Aici poți adăuga logica pentru procesarea comenzilor
+    processVoiceCommand(transcript);
   };
 
   recognition.value.onend = () => {
@@ -165,14 +380,12 @@ const initializeSpeechRecognition = () => {
 const startVoiceRecognition = () => {
   if (recognition.value) {
     recognition.value.start();
-    console.log('Recunoaștere vocală pornită');
   }
 }
 
 const stopVoiceRecognition = () => {
   if (recognition.value) {
     recognition.value.stop();
-    console.log('Recunoaștere vocală oprită');
   }
 }
 
@@ -518,6 +731,349 @@ const formatTime = (time) => {
   return `${day} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`
 }
 
+const processVoiceCommand = (transcript) => {
+  const lowerTranscript = transcript.toLowerCase();
+
+  // Detectăm tipul comenzii (task sau event)
+  if (lowerTranscript.includes('task') || lowerTranscript.includes('sarcină')) {
+    processTaskCommand(transcript);
+  } else if (lowerTranscript.includes('event') || lowerTranscript.includes('eveniment') || 
+             lowerTranscript.includes('întâlnire')) {
+    processEventCommand(transcript);
+  } else {
+    toast.warning('Comandă nerecunoscută. Specificați dacă doriți să creați un task sau un eveniment.');
+  }
+}
+
+const processTaskCommand = (transcript) => {
+  try {
+    // Creăm un obiect nou pentru task
+    const newTask = {
+      title: '',
+      description: '',
+      category: 'Personal',
+      priority: 'medium',
+      dueDate: new Date()
+    };
+
+    // Extrage titlul
+    const titleRegex = /(?:adaugă|crează)\s+(?:task|sarcină|task-ul|sarcina)\s+(.*?)(?:\s+(?:descriere|descrierea|data|dată|pe|prioritate|categorie)|$)/i;
+    const titleMatch = transcript.match(titleRegex);
+    if (titleMatch && titleMatch[1]) {
+      newTask.title = titleMatch[1].trim();
+    }
+
+    // Extrage descrierea
+    const descRegex = /(?:descriere|descrierea)\s+(.*?)(?:\s+(?:data|dată|pe|prioritate|categorie)|$)/i;
+    const descMatch = transcript.match(descRegex);
+    if (descMatch && descMatch[1]) {
+      newTask.description = descMatch[1].trim();
+    }
+
+    // Extrage data
+    const dateRegex = /(?:pe|data|dată)\s+(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)(?:\s+(\d{4}))?/i;
+    const dateMatch = transcript.match(dateRegex);
+    if (dateMatch) {
+      const day = parseInt(dateMatch[1]) + 1;
+      const monthMap = {
+        'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
+        'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
+        'septembrie': 8, 'octombrie': 9, 'noiembrie': 10, 'decembrie': 11
+      };
+      const month = monthMap[dateMatch[2].toLowerCase()];
+      const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+      
+      // Creăm data folosind UTC pentru a evita problemele cu fusul orar
+      const date = new Date(Date.UTC(year, month, day));
+      // Ajustăm pentru fusul orar local
+      const offset = date.getTimezoneOffset();
+      date.setMinutes(date.getMinutes() + offset);
+      
+      newTask.dueDate = date;
+      newTask.dueDate.setHours(0, 0, 0, 0);
+    }
+
+    // Extrage categoria și prioritatea (cod existent)
+    if (transcript.includes('personal')) {
+      newTask.category = 'Personal';
+    } else if (transcript.includes('muncă')) {
+      newTask.category = 'Work';
+    } else if (transcript.includes('cumpărături')) {
+      newTask.category = 'Shopping';
+    } else if (transcript.includes('sănătate')) {
+      newTask.category = 'Health';
+    } else if (transcript.includes('educație')) {
+      newTask.category = 'Education';
+    }
+
+    if (transcript.includes('prioritate mare')) {
+      newTask.priority = 'high';
+    } else if (transcript.includes('prioritate medie')) {
+      newTask.priority = 'medium';
+    } else if (transcript.includes('prioritate mică')) {
+      newTask.priority = 'low';
+    }
+
+    
+
+    // Actualizăm pendingTask direct cu valorile noi
+    pendingTask.value = {
+      title: newTask.title,
+      description: newTask.description,
+      category: newTask.category,
+      priority: newTask.priority,
+      dueDate: newTask.dueDate
+    };
+
+    // Forțăm actualizarea UI-ului
+    nextTick(() => {
+      showTaskConfirmation.value = true;
+    });
+    
+    stopVoiceRecognition();
+    voiceAssistant.value = false;
+    localStorage.setItem('voiceAssistant', 'false');
+
+  } catch (error) {
+    console.error('Eroare la procesarea task-ului:', error);
+    toast.error('Eroare la crearea task-ului. Încercați din nou.');
+  }
+}
+
+const processEventCommand = (transcript) => {
+  try {
+    const newEvent = {
+      title: '',
+      description: '',
+      startDate: new Date(),
+      endDate: new Date(),
+      category: 'Meeting',
+      recurrence: 'No recurrence',
+      notifications: { email: false }
+    };
+
+    // Extrage titlul
+    const titleRegex = /(?:adaugă|crează)\s+eveniment\s+(.*?)(?:\s+(?:descriere|descrierea|data|dată|pe|categorie))/i;
+    const titleMatch = transcript.match(titleRegex);
+    if (titleMatch && titleMatch[1]) {
+      newEvent.title = titleMatch[1].trim();
+    }
+
+    // Extrage descrierea
+    const descRegex = /(?:descriere|descrierea)\s+(.*?)(?:\s+(?:data|dată|pe|categorie|recurență|notificare)|$)/i;
+    const descMatch = transcript.match(descRegex);
+    if (descMatch && descMatch[1]) {
+      newEvent.description = descMatch[1].trim();
+    }
+
+    // Extrage data și ora - regex modificat pentru a fi mai flexibil
+    const dateTimeRegex = /(?:pe|data|dată)\s+(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)(?:\s+(\d{4}))?\s+(?:la\s+)?(?:ora\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
+    const dateTimeMatch = transcript.match(dateTimeRegex);
+    if (dateTimeMatch) {
+      const day = parseInt(dateTimeMatch[1]);
+      const monthMap = {
+        'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
+        'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
+        'septembrie': 8, 'octombrie': 9, 'noiembrie': 10, 'decembrie': 11
+      };
+      const month = monthMap[dateTimeMatch[2].toLowerCase()];
+      const year = dateTimeMatch[3] ? parseInt(dateTimeMatch[3]) : new Date().getFullYear();
+      let hours = parseInt(dateTimeMatch[4]);
+      const minutes = dateTimeMatch[5] ? parseInt(dateTimeMatch[5]) : 0;
+      const ampm = dateTimeMatch[6]?.toLowerCase();
+
+      // Ajustare pentru AM/PM
+      if (ampm === 'pm' && hours < 12) hours += 12;
+      if (ampm === 'am' && hours === 12) hours = 0;
+
+      // Creăm data folosind UTC pentru a evita probleme cu fusul orar
+      const startDate = new Date(Date.UTC(year, month, day));
+      startDate.setUTCHours(hours, minutes); // Setăm ora în UTC
+
+      // Data de sfârșit la o oră după start
+      const endDate = new Date(startDate.getTime());
+      endDate.setUTCHours(hours + 1, minutes);
+
+      newEvent.startDate = startDate;
+      newEvent.endDate = endDate;
+    }
+
+    // Extrage categoria
+    if (transcript.includes('întâlnire') || transcript.includes('meeting')) {
+      newEvent.category = 'Meeting';
+    } else if (transcript.includes('zi de naștere')) {
+      newEvent.category = 'Birthday';
+    } else if (transcript.includes('reminder')) {
+      newEvent.category = 'Reminder';
+    } else if (transcript.includes('sărbătoare')) {
+      newEvent.category = 'Holiday';
+    }
+
+    // Extrage recurența
+    if (transcript.includes('zilnic')) {
+      newEvent.recurrence = 'Daily';
+    } else if (transcript.includes('săptămânal')) {
+      newEvent.recurrence = 'Weekly';
+    } else if (transcript.includes('anual')) {
+      newEvent.recurrence = 'Yearly';
+    }
+
+    // Verifică notificările
+    if (transcript.includes('notificare') || transcript.includes('email')) {
+      newEvent.notifications.email = true;
+    }
+
+    
+
+    // Actualizăm pendingEvent direct cu valorile noi
+    pendingEvent.value = {
+      title: newEvent.title,
+      description: newEvent.description,
+      startDate: newEvent.startDate,
+      endDate: newEvent.endDate,
+      category: newEvent.category,
+      recurrence: newEvent.recurrence,
+      notifications: { ...newEvent.notifications }
+    };
+
+    // Forțăm actualizarea UI-ului
+    nextTick(() => {
+      showEventConfirmation.value = true;
+    });
+    
+    stopVoiceRecognition();
+    voiceAssistant.value = false;
+    localStorage.setItem('voiceAssistant', 'false');
+
+  } catch (error) {
+    console.error('Eroare la procesarea evenimentului:', error);
+    toast.error('Eroare la crearea evenimentului. Încercați din nou.');
+  }
+}
+
+// Adaugă funcții pentru gestionarea confirmărilor
+const confirmTask = async () => {
+  await createTask(pendingTask.value);
+  showTaskConfirmation.value = false;
+  pendingTask.value = {
+    title: '',
+    description: '',
+    category: 'Personal',
+    priority: 'medium',
+    dueDate: new Date()
+  };
+}
+
+const cancelTask = () => {
+  showTaskConfirmation.value = false;
+  pendingTask.value = {
+    title: '',
+    description: '',
+    category: 'Personal',
+    priority: 'medium',
+    dueDate: new Date()
+  };
+  toast.info('Crearea task-ului a fost anulată');
+}
+
+const confirmEvent = async () => {
+  await createEvent(pendingEvent.value);
+  showEventConfirmation.value = false;
+  pendingEvent.value = {
+    title: '',
+    description: '',
+    startDate: new Date(),
+    endDate: new Date(new Date().getTime() + 3600000), // +1 oră
+    category: 'Meeting',
+    recurrence: 'No recurrence',
+    notifications: { email: false }
+  };
+}
+
+const cancelEvent = () => {
+  showEventConfirmation.value = false;
+  pendingEvent.value = {
+    title: '',
+    description: '',
+    startDate: new Date(),
+    endDate: new Date(new Date().getTime() + 3600000), // +1 oră
+    category: 'Meeting',
+    recurrence: 'No recurrence',
+    notifications: { email: false }
+  };
+  toast.info('Crearea evenimentului a fost anulată');
+}
+
+// Adaugă funcție helper pentru formatarea datei
+const formatDate = (date) => {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('ro-RO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+const formatDateTime = (date) => {
+  if (!date) return '';
+  return new Date(date).toLocaleString('ro-RO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// Adăugăm funcțiile pentru crearea task-urilor și evenimentelor
+const createTask = async (taskData) => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('Trebuie să fiți autentificat pentru a crea task-uri');
+      return;
+    }
+
+    const token = await user.getIdToken();
+    await axios.post('/api/tasks', taskData, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    toast.success('Task creat cu succes!');
+    fetchAnalyticsData(); // Reîmprospătăm datele
+  } catch (error) {
+    console.error('Eroare la crearea task-ului:', error);
+    toast.error('Eroare la salvarea task-ului');
+  }
+}
+
+const createEvent = async (eventData) => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('Trebuie să fiți autentificat pentru a crea evenimente');
+      return;
+    }
+
+    const token = await user.getIdToken();
+    await axios.post('/api/events', eventData, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    toast.success('Eveniment creat cu succes!');
+    fetchAnalyticsData(); // Reîmprospătăm datele
+  } catch (error) {
+    console.error('Eroare la crearea evenimentului:', error);
+    toast.error('Eroare la salvarea evenimentului');
+  }
+}
+
 onMounted(() => {
   fetchAnalyticsData()
   const savedVoiceAssistant = localStorage.getItem('voiceAssistant') === 'true'
@@ -797,6 +1353,150 @@ h1 {
 }
 
 .voice-assistant-btn:hover {
+  opacity: 0.9;
+}
+
+.confirmation-content {
+  padding: 1rem;
+  background: var(--background);
+  border-radius: 8px;
+}
+
+.json-preview {
+  background: var(--background);
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  border: 1px solid var(--secondary);
+}
+
+.json-preview pre {
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.confirmation-content h3 {
+  color: var(--text);
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.form-input {
+  padding: 0.75rem;
+  border: 2px solid var(--secondary);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--text);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-input:hover, 
+.form-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+textarea.form-input {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--background);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h2 {
+  color: var(--text);
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.btn-confirm {
+  background: var(--primary);
+  color: var(--text);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel {
+  background: var(--secondary);
+  color: var(--text);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.btn-confirm:hover,
+.btn-cancel:hover {
   opacity: 0.9;
 }
 </style>
