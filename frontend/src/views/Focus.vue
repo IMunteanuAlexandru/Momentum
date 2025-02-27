@@ -399,7 +399,7 @@ export default {
 .setting-group h3 {
     display: flex;
     align-items: center;
-    font-size: 1.25rem;
+    font-size: 1.7em;
     margin-bottom: 1.5rem;
     color: var(--primary);
 }
@@ -537,7 +537,7 @@ export default {
     padding: 0.5rem 1rem;
     border-radius: 20px;
     font-weight: 500;
-    color: var(--secondary);
+    color: var(--primary);
 }
 
 .preset-chip {
@@ -550,6 +550,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+    font-size: 1.5rem;
 }
 
 @media (max-width: 768px) {

@@ -62,7 +62,11 @@
               <div class="day-number">
                 {{ day.dayNumber }}
               </div>
-              <div class="event-pill" v-for="event in day.events.slice(0, 3)" :key="event.id" :class="event.category" @click.stop="editEvent(event)">
+              <div class="event-pill" 
+                   v-for="event in day.events.slice(0, 3)" 
+                   :key="event.id" 
+                   :class="event.category" 
+                   @click.stop="showEventCard(event)">
                 {{ event.title }}
               </div>
               <div v-if="day.events.length > 3" class="more-events" @click.stop="showAllEvents(day)">
@@ -97,7 +101,7 @@
                     class="event-block"
                     :class="event.category"
                     :style="getEventStyle(event)"
-                    @click="editEvent(event)"
+                    @click="showEventCard(event)"
                   >
                     {{ event.title }}
                   </div>
@@ -109,6 +113,9 @@
 
         <!-- Day View -->
         <div v-else class="day-view">
+          <div class="day-header">
+            <h3>{{ formatSelectedDate }}</h3>
+          </div>
           <div class="time-grid">
             <div class="time-slots">
               <div v-for="hour in 24" :key="hour" class="time-slot">
@@ -119,12 +126,11 @@
               <div
                 v-for="event in currentDayEvents"
                 :key="event.id"
-                class="event-block"
+                class="event-block day-event"
                 :class="event.category"
                 :style="getEventStyle(event)"
-                @click="editEvent(event)"
+                @click="showEventCard(event)"
               >
-                <div class="event-time">{{ formatEventTime(event) }}</div>
                 <div class="event-title">{{ event.title }}</div>
               </div>
             </div>
@@ -207,6 +213,56 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Event Details Modal -->
+      <div v-if="showEventDetails" class="event-details-modal" @click.self="closeEventDetails">
+        <div class="event-details-card">
+          <div class="event-header" :class="selectedEvent.category">
+            <h2>{{ selectedEvent.title }}</h2>
+            <button class="close-btn" @click="closeEventDetails">×</button>
+          </div>
+          
+          <div class="event-body">
+            <div class="detail-row">
+              <span class="icon">🕒</span>
+              <div class="detail-content">
+                <div>{{ formatDetailDate(selectedEvent.startDate) }}</div>
+                <div>{{ formatDetailDate(selectedEvent.endDate) }}</div>
+              </div>
+            </div>
+
+            <div class="detail-row" v-if="selectedEvent.description">
+              <span class="icon">📝</span>
+              <div class="detail-content">{{ selectedEvent.description }}</div>
+            </div>
+
+            <div class="detail-row">
+              <span class="icon">🏷️</span>
+              <div class="detail-content">{{ capitalizeFirst(selectedEvent.category) }}</div>
+            </div>
+
+            <div class="detail-row" v-if="selectedEvent.recurrence">
+              <span class="icon">🔄</span>
+              <div class="detail-content">Repeats {{ selectedEvent.recurrence }}</div>
+            </div>
+
+            <div class="detail-row" v-if="hasNotifications">
+              <span class="icon">🔔</span>
+              <div class="detail-content">
+                Notifications: 
+                <span v-if="selectedEvent.notifications.email">Email</span>
+                <span v-if="selectedEvent.notifications.push">Push</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="event-actions">
+            <button class="btn-edit" @click="startEditing">
+              <span class="icon">✏️</span> Edit Event
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -397,6 +453,52 @@ export default {
       }
     }
 
+    const showEventCard = (event) => {
+      selectedEvent.value = event
+      showEventDetails.value = true
+    }
+
+    const closeEventDetails = () => {
+      showEventDetails.value = false
+      selectedEvent.value = null
+    }
+
+    const startEditing = () => {
+      editingEvent.value = selectedEvent.value
+      eventForm.value = { 
+        ...selectedEvent.value,
+        startDate: selectedEvent.value.startDate.slice(0, 16), // Format for datetime-local input
+        endDate: selectedEvent.value.endDate.slice(0, 16),
+        notifications: {
+          email: selectedEvent.value.notifications?.email || false,
+          push: selectedEvent.value.notifications?.push || false
+        }
+      }
+      showAddEvent.value = true
+      closeEventDetails() // Close the details modal before showing edit modal
+    }
+
+    const formatDetailDate = (dateString) => {
+      const date = new Date(dateString)
+      return date.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+
+    const capitalizeFirst = (str) => {
+      return str.charAt(0).toUpperCase() + str.slice(1)
+    }
+
+    const hasNotifications = computed(() => {
+      if (!selectedEvent.value?.notifications) return false
+      return selectedEvent.value.notifications.email || selectedEvent.value.notifications.push
+    })
+
     const editEvent = (event) => {
       editingEvent.value = event
       eventForm.value = { ...event }
@@ -503,6 +605,18 @@ export default {
       loadCalendarData()
     }
 
+    const showEventDetails = ref(false)
+    const selectedEvent = ref(null)
+
+    const formatSelectedDate = computed(() => {
+      return currentDate.value.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    })
+
     onMounted(() => {
       // Initialize with current date
       const now = new Date()
@@ -538,7 +652,16 @@ export default {
       isLoading,
       error,
       user,
-      retryLoading
+      retryLoading,
+      showEventDetails,
+      selectedEvent,
+      showEventCard,
+      closeEventDetails,
+      formatDetailDate,
+      capitalizeFirst,
+      hasNotifications,
+      startEditing,
+      formatSelectedDate
     }
   }
 }
@@ -778,7 +901,7 @@ export default {
   cursor: pointer;
   overflow: hidden;
   z-index: 1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(255, 0, 0, 0.1);
 }
 
 .event-block:hover {
@@ -786,16 +909,12 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.event-time {
-  font-size: 0.9em;
-  font-weight: bold;
-  margin-bottom: 2px;
-}
 
 .event-title {
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 /* Update event category colors */
@@ -856,6 +975,26 @@ export default {
 }
 
 /* Day View */
+.day-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.day-view .day-header {
+  background: var(--primary);
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.day-view .day-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.5rem;
+  text-align: center;
+}
+
 .day-view .time-grid {
   display: grid;
   grid-template-columns: 60px 1fr;
@@ -868,46 +1007,63 @@ export default {
   background: var(--primary);
 }
 
-.event-block {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  padding: 4px;
-  border-radius: 4px;
-  font-size: 0.8em;
-  cursor: pointer;
-  overflow: hidden;
+.event-block.day-event {
+  background: var(--background);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* Event Categories */
-.event-pill.meeting,
-.event-block.meeting {
-  background: #e3f2fd;
-  color: #1976d2;
+.event-block.day-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.event-pill.event,
-.event-block.event {
-  background: #e8f5e9;
-  color: #388e3c;
+.event-block.day-event {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: inherit;
 }
 
-.event-pill.reminder,
-.event-block.reminder {
-  background: #fff3e0;
-  color: #f57c00;
+.event-block.day-event .event-title {
+  font-size: 1rem;
+  font-weight: 500;
 }
 
-.event-pill.birthday,
-.event-block.birthday {
-  background: #f3e5f5;
-  color: #7b1fa2;
+.event-block.day-event .event-description {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 4px;
 }
 
-.event-pill.holiday,
-.event-block.holiday {
-  background: #fff3e0;
-  color: #f57c00;
+/* Update day view event category styles */
+.event-block.day-event.meeting {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #1565c0;
+}
+
+.event-block.day-event.event {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  color: #2e7d32;
+}
+
+.event-block.day-event.reminder {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  color: #e65100;
+}
+
+.event-block.day-event.birthday {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  color: #6a1b9a;
+}
+
+.event-block.day-event.holiday {
+  background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);
+  color: #c2185b;
 }
 
 /* Modal Styles */
@@ -1061,5 +1217,116 @@ export default {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Event Details Modal */
+.event-details-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9998;
+}
+
+.event-details-card {
+  background: var(--background);
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.event-header {
+  padding: 20px;
+  position: relative;
+  color: white;
+}
+
+.event-header.meeting { background: #1976d2; }
+.event-header.event { background: #4caf50; }
+.event-header.reminder { background: #ff9800; }
+.event-header.birthday { background: #e91e63; }
+.event-header.holiday { background: #9c27b0; }
+
+.event-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  padding-right: 30px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.event-body {
+  padding: 20px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 15px;
+  color: var(--text);
+}
+
+.detail-row .icon {
+  font-size: 1.2rem;
+  width: 24px;
+}
+
+.detail-content {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.event-actions {
+  padding: 15px 20px;
+  border-top: 1px solid var(--secondary);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-edit {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-edit:hover {
+  opacity: 0.9;
 }
 </style> 

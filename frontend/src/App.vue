@@ -71,10 +71,10 @@ onMounted(async () => {
   --modern-text: #BCAB79;
 
   /* Retro Theme */
-  --retro-primary: #423e37ff;
-  --retro-secondary: #6A8D92;
-  --retro-background: #edebd7ff;
-  --retro-text: #000;
+  --retro-primary: #4A2720;
+  --retro-secondary: #9E4F20;
+  --retro-background: #1f0c019D;
+  --retro-text: #E1B1A0;
 
   /* Dark Theme */
   --dark-primary: #134b42;
@@ -83,10 +83,10 @@ onMounted(async () => {
   --dark-text: #ffffff;
 
   /* Nature Theme */
-  --nature-primary: #4caf50;
-  --nature-secondary: #81c784;
-  --nature-background: #f1f8e9;
-  --nature-text: #1b5e20;
+  --nature-primary: #012622;
+  --nature-secondary: #1F2F33;
+  --nature-background: #304042;
+  --nature-text: #FEB95F;
 
   /* Soft Theme */
   --soft-primary: #eac8ca;
