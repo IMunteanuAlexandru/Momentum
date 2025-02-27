@@ -188,6 +188,7 @@ export default {
                 this.completedSessions++
                 this.isBreak = true
                 this.currentTime = this.breakTime * 60
+                this.startTimer()
             } else {
                 this.isBreak = false
                 this.currentTime = this.focusTime * 60
@@ -219,23 +220,23 @@ export default {
                 this.tipData = {
                     isEfficient: true,
                     title: 'Optimal Productivity Cycle',
-                    message: "This combination of 45 minutes of focus and 15 minutes of break is based on scientific research on the brain's natural attention and recovery cycles.",
+                    message: 'This combination of 45 minutes of focus and 15 minutes of break is based on scientific research about natural attention and recovery cycles of the brain.',
                     recommendations: [
-                        "Use the break for light physical movement",
-                        "Practice eye relaxation exercises (20-20-20 rule)",
-                        "Go outside for fresh air during the break if possible"
+                        'Use the break for light physical movement',
+                        'Practice eye relaxation exercises (20-20-20 rule)',
+                        'Go outside during the break if possible'
                     ],
-                    note: 'Studies show that 45 minutes is the optimal period for maintaining intense focus, while a 15-minute break allows for full recovery.'
+                    note: 'Studies show that 45 minutes is the optimal period for maintaining intense focus, and 15 minutes of break allows for complete recovery.'
                 }
             } else if (focus === 25 && break_ === 5) {
                 this.tipData = {
                     isEfficient: true,
                     title: 'Traditional Pomodoro Technique',
-                    message: 'The Pomodoro method, developed by Francesco Cirillo in the 1980s, is scientifically proven to be effective in improving productivity and reducing procrastination.',
+                    message: 'The Pomodoro method, developed by Francesco Cirillo in the 1980s, is scientifically proven to be effective for improving productivity and reducing procrastination.',
                     recommendations: [
                         'Use the break for stretching exercises',
                         'Drink water and avoid electronic devices',
-                        'Record progress after each completed session'
+                        'Note progress after each complete session'
                     ],
                     note: 'The effectiveness of the Pomodoro method is confirmed by numerous productivity and neuroscience studies.'
                 }
@@ -243,49 +244,49 @@ export default {
                 this.tipData = {
                     isEfficient: true,
                     title: 'Natural Ultradian Cycle',
-                    message: 'This interval follows the body’s natural ultradian cycle, which alternates between periods of high performance and recovery needs every 90-120 minutes.',
+                    message: "This interval follows the body's natural ultradian cycle, which alternates between periods of high performance and the need for recovery every 90-120 minute",
                     recommendations: [
                         'Plan complex tasks for the 90-minute session',
-                        'Include a short walk in the 30-minute break',
+                        'Include a short walk during the 30-minute break',
                         'Use the break for a nutritious snack'
                     ],
-                    note: 'Chronobiology research confirms that this cycle aligns with the body’s natural rhythms.'
+                    note: "Chronobiology research confirms that this cycle aligns with the body's natural rhythms"
                 }
             } else if (focus >= 60 && break_ <= 5) {
                 this.tipData = {
                     isEfficient: false,
                     title: 'Risk of Cognitive Burnout',
-                    message: 'Long focus periods with insufficient breaks can lead to mental fatigue and reduced cognitive performance.',
+                    message: 'Long periods of focus with insufficient breaks can lead to mental exhaustion and decreased cognitive performance.',
                     recommendations: [
                         'Add longer breaks (at least 10-15 minutes)',
-                        'Divide the session into smaller intervals',
+                        'Split the session into smaller intervals',
                         'Monitor signs of mental fatigue'
                     ],
-                    note: 'Neuroscience studies show that short breaks after prolonged mental effort do not allow for full cognitive recovery.'
+                    note: 'Neuroscience studies show that short breaks after prolonged mental effort do not allow for recovery of cognitive resources.'
                 }
             } else if (focus <= 15) {
                 this.tipData = {
                     isEfficient: false,
                     title: 'Insufficient Focus Time',
-                    message: 'Research shows that the brain needs 10-15 minutes just to reach an optimal state of concentration.',
+                    message: 'Research shows that the brain needs 10-15 minutes just to reach an optimal state of focus.',
                     recommendations: [
-                        'Increase duration to at least 25 minutes for efficiency',
+                        'Increase the duration to at least 25 minutes for efficiency',
                         'Use these intervals only for simple tasks',
-                        'Combine multiple short intervals into a longer session'
+                        'Combine several short intervals into a longer session'
                     ],
-                    note: 'According to neuroplasticity studies, deep concentration takes time to develop.'
+                    note: 'According to neuroplasticity studies, deep focus requires time to develop.'
                 }
             } else if (break_ >= 45) {
                 this.tipData = {
                     isEfficient: false,
-                    title: 'Prolonged Break',
-                    message: 'Excessively long breaks can interrupt the flow state and reduce motivation to resume work.',
+                    title: 'Extended Break',
+                    message: 'Excessively long breaks can disrupt the flow state and reduce motivation to resume activity.',
                     recommendations: [
                         'Limit breaks to 15-30 minutes',
                         'Plan specific activities for the break',
                         'Set alarms to return to work'
                     ],
-                    note: 'Cognitive psychology research indicates that overly long breaks can disrupt working memory and focus.'
+                    note: 'Cognitive psychology research indicates that breaks that are too long can disrupt working memory and concentration.'
                 }
             } else {
                 const ratio = focus / break_
@@ -293,23 +294,23 @@ export default {
                     this.tipData = {
                         isEfficient: false,
                         title: 'Unbalanced Ratio',
-                        message: `The current focus-to-break ratio of ${ratio.toFixed(1)}:1 does not align with scientific principles of mental energy management.`,
+                        message: `The current ratio of ${ratio.toFixed(1)}:1 between focus and break does not adhere to scientific principles of mental energy management.`,
                         recommendations: [
                             'Adjust towards a 4:1 or 5:1 ratio',
-                            'Adapt break duration to the intensity of mental effort',
+                            'Adapt the break duration to the intensity of mental effort',
                             'Test different combinations from the provided presets'
                         ],
-                        note: 'Cognitive ergonomics studies recommend a ratio between 3:1 and 7:1 for optimal performance.'
+                        note: 'Studies in cognitive ergonomics recommend a ratio between 3:1 and 7:1 for optimizing performance.'
                     }
                 } else {
                     this.tipData = {
                         isEfficient: true,
-                        title: 'Adapted Personal Rhythm',
-                        message: 'You have found a balanced ratio that aligns with general principles of cognitive energy management.',
+                        title: 'Personalized Rhythm Adapted',
+                        message: 'You have found a balanced ratio that respects the general principles of cognitive energy management.',
                         recommendations: [
-                            'Observe your energy and concentration levels',
-                            'Track productivity for different types of tasks',
-                            'Adjust based on your body’s feedback'
+                            'Observe your energy and focus levels',
+                            'Note productivity for different types of tasks',
+                            "Adjust based on your body's feedback"
                         ],
                         note: 'Personalizing intervals within healthy limits can increase individual efficiency, according to productivity studies.'
                     }

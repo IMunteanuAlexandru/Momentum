@@ -117,6 +117,19 @@
       @confirm="confirmReset"
       @cancel="hideResetAlert"
     />
+
+    <!-- Add new CustomAlert for voice permission -->
+    <CustomAlert
+      v-model:show="showVoicePermissionAlert"
+      title="Permisiune Microfon"
+      message="Pentru a utiliza asistentul vocal, vă rugăm să acordați permisiunea de acces la microfon."
+      type="info"
+      confirmText="Permite"
+      cancelText="Nu acum"
+      :showCancel="true"
+      @confirm="requestVoicePermission"
+      @cancel="handleVoicePermissionDenied"
+    />
   </div>
 </template>
 
@@ -142,6 +155,7 @@ export default {
     const showUnsupportedAlert = ref(false)
     const showSuccessAlert = ref(false)
     const showResetAlert = ref(false)
+    const showVoicePermissionAlert = ref(false)
 
     // Alert handlers
     const hideSuccessAlert = () => {
@@ -247,6 +261,7 @@ export default {
       showUnsupportedAlert,
       showSuccessAlert,
       showResetAlert,
+      showVoicePermissionAlert,
       handlePushNotificationChange,
       handleThemeChange,
       saveSettings,
@@ -256,7 +271,7 @@ export default {
       handleUnsupportedBrowser,
       hideSuccessAlert,
       hideResetAlert,
-      confirmReset
+      confirmReset,
     }
   }
 }
@@ -488,5 +503,28 @@ input:checked + .slider:before {
     width: 100%;
     justify-content: center;
   }
+}
+
+.text-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--secondary);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--text);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.text-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.text-input:hover:not(:disabled), 
+.text-input:focus:not(:disabled) {
+  border-color: var(--primary);
+  outline: none;
 }
 </style> 

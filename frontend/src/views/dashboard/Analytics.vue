@@ -3,6 +3,13 @@
     <header class="page-header">
       <h1>Analytics</h1>
       <div class="header-actions">
+        <button 
+          class="voice-assistant-btn" 
+          :class="{ active: voiceAssistant }"
+          @click="toggleVoiceAssistant"
+        >
+          🎤 Voice Assistant
+        </button>
         <button class="generate-report-btn" @click="generateReport">
           Generate Report
         </button>
@@ -104,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import { getAuth } from 'firebase/auth'
@@ -123,6 +130,70 @@ const analyticsData = ref({
   progressData: [],
   recentActivity: []
 })
+
+const voiceAssistant = ref(false)
+const recognition = ref(null)
+
+const initializeSpeechRecognition = () => {
+  if (!('webkitSpeechRecognition' in window)) {
+    console.error('Speech recognition not supported');
+    return;
+  }
+
+  recognition.value = new webkitSpeechRecognition();
+  recognition.value.continuous = true;
+  recognition.value.interimResults = false;
+  recognition.value.lang = 'ro-RO';
+
+  recognition.value.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+    console.log('Comandă primită:', transcript);
+    // Aici poți adăuga logica pentru procesarea comenzilor
+  };
+
+  recognition.value.onend = () => {
+    if (voiceAssistant.value) {
+      recognition.value.start();
+    }
+  };
+
+  recognition.value.onerror = (event) => {
+    console.error('Eroare recunoaștere vocală:', event.error);
+  };
+}
+
+const startVoiceRecognition = () => {
+  if (recognition.value) {
+    recognition.value.start();
+    console.log('Recunoaștere vocală pornită');
+  }
+}
+
+const stopVoiceRecognition = () => {
+  if (recognition.value) {
+    recognition.value.stop();
+    console.log('Recunoaștere vocală oprită');
+  }
+}
+
+const toggleVoiceAssistant = async () => {
+  if (!voiceAssistant.value) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      
+      voiceAssistant.value = true;
+      initializeSpeechRecognition();
+      startVoiceRecognition();
+    } catch (error) {
+      console.error('Error requesting microphone permission:', error);
+      toast.error('Microphone access denied');
+    }
+  } else {
+    voiceAssistant.value = false;
+    stopVoiceRecognition();
+  }
+}
 
 const fetchAnalyticsData = async () => {
   try {
@@ -447,9 +518,16 @@ const formatTime = (time) => {
   return `${day} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`
 }
 
-
 onMounted(() => {
   fetchAnalyticsData()
+  const savedVoiceAssistant = localStorage.getItem('voiceAssistant') === 'true'
+  if (savedVoiceAssistant) {
+    toggleVoiceAssistant()
+  }
+})
+
+onUnmounted(() => {
+  stopVoiceRecognition();
 })
 </script>
 
@@ -698,5 +776,27 @@ h1 {
   .progress-chart {
     height: 200px;
   }
+}
+
+.voice-assistant-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary);
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.voice-assistant-btn.active {
+  background-color: var(--secondary);
+}
+
+.voice-assistant-btn:hover {
+  opacity: 0.9;
 }
 </style>
