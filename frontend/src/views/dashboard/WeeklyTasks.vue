@@ -35,9 +35,12 @@
     <!-- Kanban Board -->
     <div v-else class="board-container">
       <div class="board">
-        <div v-for="(items, day) in weeklyTasks" :key="day" class="column">
+        <div v-for="(items, day) in weeklyTasks" :key="day" class="column" :class="{ 'today': isToday(day) }">
           <div class="column-header">
-            <h2>{{ day }}</h2>
+            <div class="day-info">
+              <h2>{{ day }}</h2>
+              <span class="date">{{ getDayDate(day) }}</span>
+            </div>
             <span class="task-count">{{ items.length }} items</span>
           </div>
           <draggable
@@ -593,6 +596,29 @@ export default {
       selectedItem.value = null
     }
 
+    const getDayDate = (day) => {
+      const now = new Date()
+      const currentDay = now.getDay()
+      const diff = currentDay === 0 ? 6 : currentDay - 1
+      const weekStart = new Date(now)
+      weekStart.setDate(now.getDate() - diff)
+      weekStart.setHours(0, 0, 0, 0)
+      
+      const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(day)
+      const targetDate = new Date(weekStart)
+      targetDate.setDate(weekStart.getDate() + dayIndex)
+      
+      return targetDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      })
+    }
+
+    const isToday = (day) => {
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+      return day === today
+    }
+
     onMounted(() => {
       fetchTasks()
     })
@@ -627,7 +653,9 @@ export default {
       formatDateTime,
       formatDate,
       showEditTaskModal,
-      showEditEventModal
+      showEditEventModal,
+      getDayDate,
+      isToday
     }
   }
 }
@@ -764,12 +792,17 @@ export default {
 .column {
   min-width: 360px;
   width: 360px;
-
   border-radius: 1rem;
   padding: 1rem;
   border: 1px solid var(--primary);
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.column.today {
+  border: 2px solid var(--primary);
+  background: rgba(56, 142, 60, 0.05);
 }
 
 .column-header {
@@ -781,11 +814,23 @@ export default {
   border-bottom: 1px solid var(--primary);
 }
 
-.column-header h2 {
+.day-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-info h2 {
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--text);
   margin: 0;
+}
+
+.date {
+  font-size: 0.875rem;
+  color: var(--text);
+  opacity: 0.75;
 }
 
 .task-count {
@@ -903,7 +948,6 @@ export default {
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
