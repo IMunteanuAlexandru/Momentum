@@ -765,7 +765,7 @@ export default {
 }
 
 .month-view .calendar-day.today {
-  background: rgba(var(--primary-rgb), 0.1);
+  background: var(--primary);
 }
 
 .month-view .calendar-day.different-month {

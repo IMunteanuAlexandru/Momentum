@@ -11,13 +11,17 @@
           <span class="nav-icon">📈</span>
           <span>Analytics</span>
         </router-link>
+        <router-link to="/dashboard/weeklytasks" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Weekly To Do
+        </router-link>
         <router-link to="/dashboard/tasks" class="nav-item">
           <span class="nav-icon">📝</span>
           Tasks
         </router-link>
         <router-link to="/dashboard/calendar" class="nav-item">
           <span class="nav-icon">📅</span>
-          <span>Calendar</span>
+          Calendar
         </router-link>
         <router-link to="/dashboard/notes" class="nav-item">
           <span class="nav-icon">📝</span>
