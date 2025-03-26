@@ -1,3 +1,5 @@
+import { emailService } from './EmailService';
+
 class NotificationService {
   constructor() {
     this.checkInterval = 60000; // Check every minute
@@ -20,90 +22,120 @@ class NotificationService {
   }
 
   async checkUpcoming() {
-    if (!("Notification" in window) || Notification.permission !== 'granted') {
-      return;
-    }
-
     const now = new Date();
     
     // Get events and tasks from localStorage
     const events = JSON.parse(localStorage.getItem('events') || '[]');
     const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    const emailNotificationsEnabled = localStorage.getItem('emailNotifications') !== 'false';
+    const pushNotificationsEnabled = localStorage.getItem('pushNotifications') !== 'false';
 
     // Check events
-    events.forEach(event => {
+    events.forEach(async event => {
       const eventStart = new Date(event.start);
       const timeUntilStart = eventStart - now;
 
       // 1 hour notification
       if (timeUntilStart > 0 && timeUntilStart <= 3600000 && !this.hasBeenNotified(event.id, '1h')) {
-        this.showNotification(
-          'Eveniment în curând',
-          {
-            title: event.title,
-            time: '1 oră',
-            type: 'event',
-            description: event.description || '',
-            icon: '📅'
-          },
-          event.id,
-          '1h'
-        );
+        // Send email notification if enabled
+        if (emailNotificationsEnabled && event.notifications?.email) {
+          try {
+            await emailService.sendEventReminder(event);
+          } catch (error) {
+            console.error('Failed to send email notification:', error);
+          }
+        }
+
+        // Send push notification if enabled
+        if (pushNotificationsEnabled && event.notifications?.push && 
+            ("Notification" in window) && Notification.permission === 'granted') {
+          this.showNotification(
+            'Eveniment în curând',
+            {
+              title: event.title,
+              time: '1 oră',
+              type: 'event',
+              description: event.description || '',
+              icon: '📅'
+            },
+            event.id,
+            '1h'
+          );
+        }
       }
 
-      // 10 minutes notification
+      // 10 minutes notification - only push notification
       if (timeUntilStart > 0 && timeUntilStart <= 600000 && !this.hasBeenNotified(event.id, '10m')) {
-        this.showNotification(
-          'Eveniment în curând',
-          {
-            title: event.title,
-            time: '10 minute',
-            type: 'event',
-            description: event.description || '',
-            icon: '⏰'
-          },
-          event.id,
-          '10m'
-        );
+        if (pushNotificationsEnabled && event.notifications?.push &&
+            ("Notification" in window) && Notification.permission === 'granted') {
+          this.showNotification(
+            'Eveniment în curând',
+            {
+              title: event.title,
+              time: '10 minute',
+              type: 'event',
+              description: event.description || '',
+              icon: '⏰'
+            },
+            event.id,
+            '10m'
+          );
+        }
       }
     });
 
     // Check tasks
-    tasks.forEach(task => {
+    tasks.forEach(async task => {
       if (task.dueDate) {
         const taskDue = new Date(task.dueDate);
         const timeUntilDue = taskDue - now;
 
         // 1 hour notification
         if (timeUntilDue > 0 && timeUntilDue <= 3600000 && !this.hasBeenNotified(task.id, '1h')) {
-          this.showNotification(
-            'Task în curând',
-            {
-              title: task.title,
-              time: '1 oră',
-              type: 'task',
-              description: task.description || '',
-              icon: '✓'
-            },
-            task.id,
-            '1h'
-          );
+          // Send email notification if enabled
+          if (emailNotificationsEnabled && task.notifications?.email) {
+            try {
+              await emailService.sendTaskReminder(task);
+            } catch (error) {
+              console.error('Failed to send email notification:', error);
+            }
+          }
+
+          // Send push notification if enabled
+          if (pushNotificationsEnabled && task.notifications?.push &&
+              ("Notification" in window) && Notification.permission === 'granted') {
+            this.showNotification(
+              'Task în curând',
+              {
+                title: task.title,
+                time: '1 oră',
+                type: 'task',
+                description: task.description || '',
+                icon: '✓'
+              },
+              task.id,
+              '1h'
+            );
+          }
         }
 
-        // 10 minutes notification
+        // 10 minutes notification - only push notification
         if (timeUntilDue > 0 && timeUntilDue <= 600000 && !this.hasBeenNotified(task.id, '10m')) {
-          this.showNotification(
-            'Task în curând',
-            {
-              title: task.title,
-              time: '10 minute',
-              type: 'task',
-              description: task.description || '',
-              icon: '⚡'
-            },
-            task.id,
-            '10m'
-          );
+          if (pushNotificationsEnabled && task.notifications?.push &&
+              ("Notification" in window) && Notification.permission === 'granted') {
+            this.showNotification(
+              'Task în curând',
+              {
+                title: task.title,
+                time: '10 minute',
+                type: 'task',
+                description: task.description || '',
+                icon: '⚡'
+              },
+              task.id,
+              '10m'
+            );
+          }
         }
       }
     });

@@ -13,6 +13,7 @@ const Analytics = () => import('../views/dashboard/Analytics.vue')
 const Export = () => import('../views/dashboard/Export.vue')
 const Settings = () => import('../views/Settings.vue')
 const Focus = () => import('../views/Focus.vue')
+const WeeklyTasks = () => import('../views/dashboard/WeeklyTasks.vue')
 
 const routes = [
   {
@@ -44,6 +45,11 @@ const routes = [
         path: 'analytics',
         name: 'Analytics',
         component: Analytics
+      },
+      {
+        path: 'weeklytasks',
+        name: 'WeeklyTasks',
+        component: WeeklyTasks
       },
       {
         path: 'tasks',

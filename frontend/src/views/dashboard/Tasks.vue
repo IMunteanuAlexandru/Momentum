@@ -790,7 +790,7 @@ export default {
 .form-group select:focus {
   border-color: var(--primary);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+  box-shadow: 0 0 0 3px var(--primary);
 }
 
 .modal-actions {

@@ -207,7 +207,7 @@ export default {
 }
 
 .user-details p {
-  color: var(--text-secondary);
+  color: var(--text);
   font-size: 0.875rem;
 }
 

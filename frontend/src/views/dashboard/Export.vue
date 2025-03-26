@@ -951,7 +951,7 @@ export default {
 .date-input input:focus {
   border-color: var(--secondary);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+  box-shadow: 0 0 0 3px var(--primary);
 }
 
 .btn-export {
