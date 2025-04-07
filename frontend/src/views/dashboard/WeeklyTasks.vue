@@ -48,8 +48,9 @@
             :animation="200"
             ghost-class="ghost-card"
             group="items"
-            @change="handleDragChange($event, day)"
+            @change="(event) => handleDragChange(event, day)"
             item-key="id"
+            :move="checkMove"
           >
             <template #item="{ element }">
               <TaskCard
@@ -291,18 +292,21 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h3>Confirm Action</h3>
+          <h3>{{ pendingAction === 'delete' ? 'Confirm Delete' : 'Confirm Move' }}</h3>
         </div>
         <p>{{ confirmMessage }}</p>
         <div class="modal-footer">
           <button @click="closeConfirmModal" class="btn btn-text">
             Cancel
           </button>
-          <button @click="handleConfirm" class="btn btn-danger">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button @click="handleConfirm" class="btn" :class="pendingAction === 'delete' ? 'btn-danger' : 'btn-primary'">
+            <svg v-if="pendingAction === 'delete'" xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            Delete {{ itemType }}
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ pendingAction === 'delete' ? 'Delete' : 'Move' }} {{ itemType }}
           </button>
         </div>
       </div>
@@ -339,9 +343,10 @@ export default {
     const confirmMessage = ref('')
     const pendingAction = ref(null)
     const pendingTaskId = ref(null)
-    const itemType = ref('task')
+    const itemType = ref('')
     const showReadModal = ref(false)
     const selectedItem = ref(null)
+    const pendingMoveData = ref(null)
 
     const categories = [
       'Work',
@@ -429,28 +434,33 @@ export default {
       return result
     })
 
-    const handleDragChange = async (event, toDay) => {
-      if (event.moved) {
-        const item = event.moved.element
-        try {
-          if (item.type === 'task') {
-            const updatedTask = {
-              ...item,
-              dueDate: new Date(item.dueDate)
-            }
-            await store.dispatch('tasks/updateTask', updatedTask)
-          } else {
-            const updatedEvent = {
-              ...item,
-              startDate: new Date(item.startDate)
-            }
-            await store.dispatch('events/updateEvent', updatedEvent)
-          }
-          toast.success('Item moved successfully')
-        } catch (error) {
-          console.error('Error moving item:', error)
-          toast.error('Failed to move item')
+    const checkMove = (evt) => {
+      return true // Allow all moves
+    }
+
+    const handleDragChange = (event, toDay) => {
+      
+      // Handle the case when an item is moved to a new position
+      if (event.added) {
+        const item = event.added.element
+        const fromDay = event.removed?.oldIndex !== undefined ? 
+          Object.keys(weeklyTasks.value)[event.removed.oldIndex] : ''
+
+
+        // Show confirmation modal
+        confirmMessage.value = `Are you sure you want to move this ${item.type} from ${fromDay} to ${toDay}?`
+        pendingAction.value = 'move'
+        pendingTaskId.value = item.id
+        itemType.value = item.type
+        showConfirmModal.value = true
+
+        // Store the move data for later use
+        const moveData = {
+          item,
+          toDay,
+          fromDay
         }
+        pendingMoveData.value = moveData
       }
     }
 
@@ -535,6 +545,8 @@ export default {
       confirmMessage.value = ''
       pendingAction.value = null
       pendingTaskId.value = null
+      pendingMoveData.value = null
+      itemType.value = ''
     }
 
     const handleConfirm = async () => {
@@ -543,9 +555,53 @@ export default {
           if (itemType.value === 'task') {
             await store.dispatch('tasks/deleteTask', pendingTaskId.value)
           } else {
-            await store.dispatch('events/deleteEvent', pendingTaskId.value)
+            await store.dispatch('calendar/deleteEvent', pendingTaskId.value)
           }
           toast.success(`${itemType.value} deleted successfully`)
+        } else if (pendingAction.value === 'move' && pendingMoveData.value) {
+          const { item, toDay } = pendingMoveData.value
+          
+          // Get the target date based on the day it was moved to
+          const now = new Date()
+          const currentDay = now.getDay()
+          const diff = currentDay === 0 ? 6 : currentDay - 1
+          const weekStart = new Date(now)
+          weekStart.setDate(now.getDate() - diff)
+          weekStart.setHours(0, 0, 0, 0)
+          
+          const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(toDay)
+          const targetDate = new Date(weekStart)
+          targetDate.setDate(weekStart.getDate() + dayIndex)
+
+          if (item.type === 'task') {
+            const updatedTask = {
+              ...item,
+              dueDate: targetDate.toISOString()
+            }
+            await store.dispatch('tasks/updateTask', updatedTask)
+            // Refresh the tasks after update
+            await store.dispatch('tasks/fetchTasks')
+          } else {
+            // For events, we need to maintain the time while changing the date
+            const startDate = new Date(item.startDate)
+            const endDate = new Date(item.endDate)
+            
+            // Calculate the time difference between start and end
+            const duration = endDate.getTime() - startDate.getTime()
+            
+            // Set the new start date while preserving the time
+            targetDate.setHours(startDate.getHours(), startDate.getMinutes(), startDate.getSeconds())
+            
+            const updatedEvent = {
+              ...item,
+              startDate: targetDate.toISOString(),
+              endDate: new Date(targetDate.getTime() + duration).toISOString()
+            }
+            await store.dispatch('calendar/updateEvent', updatedEvent)
+            // Refresh the events after update
+            await store.dispatch('calendar/fetchEvents')
+          }
+          toast.success(`${item.type} moved successfully`)
         }
       } catch (error) {
         console.error('Error:', error)
@@ -635,6 +691,7 @@ export default {
       showConfirmModal,
       confirmMessage,
       handleDragChange,
+      checkMove,
       editTask,
       editEvent,
       deleteTask,
@@ -655,7 +712,10 @@ export default {
       showEditTaskModal,
       showEditEventModal,
       getDayDate,
-      isToday
+      isToday,
+      pendingMoveData,
+      pendingAction,
+      pendingTaskId
     }
   }
 }

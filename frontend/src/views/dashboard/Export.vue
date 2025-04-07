@@ -790,7 +790,7 @@ export default {
 
 .card-header {
   padding: 2rem;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--secondary);
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -809,9 +809,9 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.tasks { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
-.calendar { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
-.notes { background: linear-gradient(135deg, #2196F3, #00BCD4); }
+.tasks { background:  var(--secondary);}
+.calendar { background:  var(--secondary);}
+.notes { background: var(--secondary); }
 
 .card-header h2 {
   color: var(--text);
@@ -959,7 +959,7 @@ export default {
   padding: 1.25rem;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--secondary), var(--primary), var(--secondary));
+  background: var(--secondary);
   color: white;
   font-size: 1.1rem;
   font-weight: 600;
