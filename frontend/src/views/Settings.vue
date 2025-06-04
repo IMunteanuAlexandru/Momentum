@@ -44,21 +44,31 @@
         <div class="card-content">
           <div class="setting-group">
             <label class="switch-label">
-              <span>Email Notificări</span>
+              <span>Notificări în aplicație</span>
               <div class="switch">
-                <input type="checkbox" v-model="emailNotifications">
+                <input type="checkbox" v-model="inAppNotifications">
                 <span class="slider round"></span>
               </div>
             </label>
           </div>
-          <div class="setting-group">
-            <label class="switch-label">
-              <span>Notificări Push</span>
-              <div class="switch">
-                <input type="checkbox" v-model="pushNotifications" @change="handlePushNotificationChange">
-                <span class="slider round"></span>
-              </div>
-            </label>
+
+          <!-- Test Notifications Section -->
+          <div class="test-notifications">
+            <h3>Testează Notificările</h3>
+            <div class="test-buttons">
+              <button @click="testEventNotification" class="test-btn event">
+                Test Evenimente
+              </button>
+              <button @click="testTaskNotification" class="test-btn task">
+                Test Sarcini
+              </button>
+              <button @click="testWarningNotification" class="test-btn warning">
+                Test Avertisment
+              </button>
+              <button @click="testErrorNotification" class="test-btn error">
+                Test Eroare
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -90,17 +100,17 @@
 
     <CustomAlert
       v-model:show="showUnsupportedAlert"
-      title="Incompatible Browser"
-      message="This browser does not support push notifications!"
+      title="Browser Incompatibil"
+      message="Acest browser nu suportă notificări push!"
       type="error"
-      confirmText="I understand"
+      confirmText="Am înțeles"
       @confirm="handleUnsupportedBrowser"
     />
 
     <CustomAlert
       v-model:show="showSuccessAlert"
-      title="Success"
-      message="Settings have been saved successfully!"
+      title="Succes"
+      message="Setările au fost salvate cu succes!"
       type="success"
       confirmText="OK"
       @confirm="hideSuccessAlert"
@@ -108,11 +118,11 @@
 
     <CustomAlert
       v-model:show="showResetAlert"
-      title="Reset Confirmation"
-      message="Are you sure you want to reset all settings to default values?"
+      title="Confirmare Resetare"
+      message="Sigur doriți să resetați toate setările la valorile implicite?"
       type="warning"
-      confirmText="Yes, reset"
-      cancelText="No, cancel"
+      confirmText="Da, resetează"
+      cancelText="Nu, anulează"
       :showCancel="true"
       @confirm="confirmReset"
       @cancel="hideResetAlert"
@@ -136,19 +146,19 @@
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
-import notificationService from '@/services/NotificationService'
 import CustomAlert from '@/components/CustomAlert.vue'
+import InAppNotification from '@/components/InAppNotification.vue'
 
 export default {
   name: 'Settings',
   components: {
-    CustomAlert
+    CustomAlert,
+    InAppNotification
   },
   setup() {
     const store = useStore()
     const currentTheme = ref('theme-modern')
-    const emailNotifications = ref(true)
-    const pushNotifications = ref(true)
+    const inAppNotifications = ref(true)
     
     // Alert states
     const showPermissionAlert = ref(false)
@@ -168,11 +178,9 @@ export default {
 
     const handleUnsupportedBrowser = () => {
       showUnsupportedAlert.value = false;
-      pushNotifications.value = false;
     }
 
     const handlePermissionDenied = () => {
-      pushNotifications.value = false;
       showPermissionAlert.value = false;
     }
 
@@ -185,29 +193,15 @@ export default {
       try {
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-          pushNotifications.value = false;
+          // pushNotifications.value = false;
         } else {
-          notificationService.start();
+          // notificationService.start();
         }
       } catch (error) {
         console.error('Error requesting notification permission:', error);
-        pushNotifications.value = false;
+        // pushNotifications.value = false;
       }
       showPermissionAlert.value = false;
-    }
-
-    const handlePushNotificationChange = async () => {
-      if (pushNotifications.value) {
-        if (Notification.permission === "default") {
-          showPermissionAlert.value = true;
-        } else if (Notification.permission === "granted") {
-          notificationService.start();
-        } else {
-          pushNotifications.value = false;
-        }
-      } else {
-        notificationService.stop();
-      }
     }
 
     const handleThemeChange = () => {
@@ -217,21 +211,63 @@ export default {
     }
 
     const saveSettings = () => {
-      localStorage.setItem('emailNotifications', emailNotifications.value)
-      localStorage.setItem('pushNotifications', pushNotifications.value)
+      localStorage.setItem('inAppNotifications', inAppNotifications.value)
       showSuccessAlert.value = true;
     }
 
     const confirmReset = () => {
       currentTheme.value = 'theme-modern'
-      emailNotifications.value = true
-      pushNotifications.value = true
+      inAppNotifications.value = true
       handleThemeChange()
       showResetAlert.value = false;
     }
 
     const resetSettings = () => {
       showResetAlert.value = true;
+    }
+
+    const testEventNotification = () => {
+      if (window.notificationCenter) {
+        window.notificationCenter.addNotification({
+          title: "Test Eveniment",
+          message: "Acesta este un test pentru notificări de eveniment",
+          type: "event",
+          icon: "📅"
+        });
+      }
+    }
+
+    const testTaskNotification = () => {
+      if (window.notificationCenter) {
+        window.notificationCenter.addNotification({
+          title: "Test Task",
+          message: "Acesta este un test pentru notificări de task",
+          type: "task",
+          icon: "✓"
+        });
+      }
+    }
+
+    const testWarningNotification = () => {
+      if (window.notificationCenter) {
+        window.notificationCenter.addNotification({
+          title: "Test Avertisment",
+          message: "Acesta este un test pentru notificări de avertisment",
+          type: "warning",
+          icon: "⚠️"
+        });
+      }
+    }
+
+    const testErrorNotification = () => {
+      if (window.notificationCenter) {
+        window.notificationCenter.addNotification({
+          title: "Test Eroare",
+          message: "Acesta este un test pentru notificări de eroare",
+          type: "error",
+          icon: "❌"
+        });
+      }
     }
 
     onMounted(() => {
@@ -241,37 +277,31 @@ export default {
         document.documentElement.className = savedTheme
       }
       
-      emailNotifications.value = localStorage.getItem('emailNotifications') !== 'false'
-      pushNotifications.value = localStorage.getItem('pushNotifications') !== 'false'
-      
-      if (pushNotifications.value) {
-        requestNotificationPermission();
-      }
+      inAppNotifications.value = localStorage.getItem('inAppNotifications') !== 'false'
     })
 
     onUnmounted(() => {
-      notificationService.stop();
+      // nimic pentru push
     })
 
     return {
       currentTheme,
-      emailNotifications,
-      pushNotifications,
+      inAppNotifications,
       showPermissionAlert,
       showUnsupportedAlert,
       showSuccessAlert,
       showResetAlert,
       showVoicePermissionAlert,
-      handlePushNotificationChange,
       handleThemeChange,
       saveSettings,
       resetSettings,
-      requestNotificationPermission,
-      handlePermissionDenied,
-      handleUnsupportedBrowser,
       hideSuccessAlert,
       hideResetAlert,
       confirmReset,
+      testEventNotification,
+      testTaskNotification,
+      testWarningNotification,
+      testErrorNotification
     }
   }
 }
@@ -526,5 +556,61 @@ input:checked + .slider:before {
 .text-input:focus:not(:disabled) {
   border-color: var(--primary);
   outline: none;
+}
+
+.test-notifications {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.test-notifications h3 {
+  margin: 0 0 1rem 0;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.test-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.test-btn {
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.test-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.test-btn.event {
+  background: #4CAF50;
+}
+
+.test-btn.task {
+  background: #2196F3;
+}
+
+.test-btn.warning {
+  background: #FFC107;
+  color: #000;
+}
+
+.test-btn.error {
+  background: #F44336;
+}
+
+@media (max-width: 768px) {
+  .test-buttons {
+    grid-template-columns: 1fr;
+  }
 }
 </style> 

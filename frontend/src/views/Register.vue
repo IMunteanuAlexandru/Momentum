@@ -1,10 +1,10 @@
 <template>
   <div class="auth-container">
     <div class="auth-card">
-      <h2>Create Account</h2>
+      <h2>Creare Cont</h2>
       <form @submit.prevent="handleRegister" class="auth-form">
         <div class="form-group">
-          <label for="displayName">Username</label>
+          <label for="displayName">Nume utilizator</label>
           <input
             type="text"
             id="displayName"
@@ -28,7 +28,7 @@
         </div>
         
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Parolă</label>
           <input
             type="password"
             id="password"
@@ -44,21 +44,21 @@
         </div>
 
         <button type="submit" class="btn-submit" :disabled="loading">
-          {{ loading ? 'Creating Account...' : 'Register' }}
+          {{ loading ? 'Se creează contul...' : 'Înregistrare' }}
         </button>
 
         <div class="divider">
-          <span>or</span>
+          <span>sau</span>
         </div>
 
         <button type="button" class="btn-google" @click="handleGoogleRegister" :disabled="loading">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" />
-          Continue with Google
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Logo Google" />
+          Continuă cu Google
         </button>
 
         <p class="auth-link">
-          Already have an account? 
-          <router-link to="/login">Login here</router-link>
+          Ai deja cont? 
+          <router-link to="/login">Autentifică-te aici</router-link>
         </p>
       </form>
     </div>

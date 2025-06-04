@@ -28,7 +28,19 @@ db = firestore.client()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
+# Add CSP headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com;"
+    return response
 
 def check_token(f):
     @wraps(f)
@@ -959,6 +971,40 @@ def generate_report():
             'status': 'error',
             'message': str(e)
         }), 500
+
+@app.route('/api/test/data', methods=['GET'])
+def test_data():
+    try:
+        # Get all tasks
+        tasks_ref = db.collection('tasks').stream()
+        tasks = []
+        for task in tasks_ref:
+            task_data = task.to_dict()
+            task_data['id'] = task.id
+            tasks.append(task_data)
+            
+        # Get all events
+        events_ref = db.collection('events').stream()
+        events = []
+        for event in events_ref:
+            event_data = event.to_dict()
+            event_data['id'] = event.id
+            events.append(event_data)
+            
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'tasks_count': len(tasks),
+                'events_count': len(events),
+                'tasks': tasks[:5],  # Show first 5 tasks
+                'events': events[:5]  # Show first 5 events
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

@@ -17,12 +17,12 @@
       <div class="nav-links">
         <router-link to="/dashboard/overview" class="nav-link" active-class="active">
           <i class="fas fa-home"></i>
-          Overview
+          Prezentare generală
         </router-link>
         
         <router-link to="/dashboard/tasks" class="nav-link" active-class="active">
           <i class="fas fa-tasks"></i>
-          Tasks
+          Sarcini
         </router-link>
         
         <router-link to="/dashboard/calendar" class="nav-link" active-class="active">
@@ -32,14 +32,14 @@
         
         <router-link to="/dashboard/notes" class="nav-link" active-class="active">
           <i class="fas fa-sticky-note"></i>
-          Notes
+          Notițe
         </router-link>
       </div>
 
       <div class="sidebar-footer">
         <button @click="handleLogout" class="btn-logout">
           <i class="fas fa-sign-out-alt"></i>
-          Logout
+          Deconectare
         </button>
       </div>
     </nav>
@@ -48,7 +48,7 @@
       <header class="top-bar">
         <div class="search-bar">
           <i class="fas fa-search"></i>
-          <input type="text" placeholder="Search..." v-model="searchQuery" @input="handleSearch" />
+          <input type="text" placeholder="Caută..." v-model="searchQuery" @input="handleSearch" />
         </div>
 
         <div class="top-bar-actions">

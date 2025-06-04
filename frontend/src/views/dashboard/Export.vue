@@ -1,14 +1,14 @@
 <template>
   <div class="export-container">
     <div class="export-header">
-      <h1>Export Data</h1>
-      <p class="export-description">Export your data in different formats</p>
+      <h1>Exportă Date</h1>
+      <p class="export-description">Exportă datele tale în diferite formate</p>
     </div>
 
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state">
       <span class="loading-spinner">⌛</span>
-      <p>Loading data...</p>
+      <p>Se încarcă datele...</p>
     </div>
 
     <!-- Export Grid -->
@@ -19,7 +19,7 @@
           <div class="icon-wrapper tasks">
             <span class="icon">📋</span>
           </div>
-          <h2>Export Tasks</h2>
+          <h2>Exportă Sarcini</h2>
         </div>
         <div class="card-content">
           <div class="format-selector">
@@ -54,14 +54,14 @@
                 type="checkbox" 
                 v-model="exportOptions.tasks.includeCompleted"
               >
-              Include completed tasks
+              Include sarcinile finalizate
             </label>
             <label class="checkbox-label">
               <input 
                 type="checkbox" 
                 v-model="exportOptions.tasks.includeArchived"
               >
-              Include archived tasks
+              Include sarcinile arhivate
             </label>
           </div>
           <button 
@@ -81,7 +81,7 @@
           <div class="icon-wrapper calendar">
             <span class="icon">📅</span>
           </div>
-          <h2>Export Calendar</h2>
+          <h2>Exportă Calendar</h2>
         </div>
         <div class="card-content">
           <div class="format-selector">
@@ -119,14 +119,14 @@
           </div>
           <div class="date-range">
             <div class="date-input">
-              <label>From</label>
+              <label>De la</label>
               <input 
                 type="date" 
                 v-model="exportOptions.calendar.startDate"
               >
             </div>
             <div class="date-input">
-              <label>To</label>
+              <label>Până la</label>
               <input 
                 type="date" 
                 v-model="exportOptions.calendar.endDate"
@@ -150,7 +150,7 @@
           <div class="icon-wrapper notes">
             <span class="icon">📝</span>
           </div>
-          <h2>Export Notes</h2>
+          <h2>Exportă Note</h2>
         </div>
         <div class="card-content">
           <div class="format-selector">
@@ -192,7 +192,7 @@
                 type="checkbox" 
                 v-model="exportOptions.notes.includeArchived"
               >
-              Include archived notes
+              Include notele arhivate
             </label>
           </div>
           <button 
@@ -248,9 +248,9 @@ export default {
     const notes = computed(() => store.getters['notes/allNotes'])
 
     // Computed properties for button text
-    const tasksButtonText = computed(() => tasks.value.length ? 'Export Tasks' : 'No tasks available')
-    const eventsButtonText = computed(() => events.value.length ? 'Export Events' : 'No events available')
-    const notesButtonText = computed(() => notes.value.length ? 'Export Notes' : 'No notes available')
+    const tasksButtonText = computed(() => tasks.value.length ? 'Exportă Sarcini' : 'Nu există sarcini disponibile')
+    const eventsButtonText = computed(() => events.value.length ? 'Exportă Evenimente' : 'Nu există evenimente disponibile')
+    const notesButtonText = computed(() => notes.value.length ? 'Exportă Note' : 'Nu există note disponibile')
 
     const loadData = async () => {
       isLoading.value = true
@@ -337,7 +337,7 @@ export default {
         }
         store.dispatch('notifications/add', {
           type: 'success',
-          message: 'Tasks exported successfully'
+          message: 'Sarcini exportate cu succes'
         })
       } catch (error) {
         console.error('Error exporting tasks:', error)
@@ -368,7 +368,7 @@ export default {
         if (filteredEvents.length === 0) {
           store.dispatch('notifications/add', {
             type: 'warning',
-            message: 'No events in the selected time range'
+            message: 'Nu există evenimente în intervalul de timp selectat'
           })
           return
         }
@@ -633,8 +633,8 @@ export default {
     const formatDateFriendly = (date, includeTime = false) => {
       if (!date) return ''
       const d = new Date(date)
-      const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      const weekDays = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
+      const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie']
       
       const day = d.getDate()
       const month = months[d.getMonth()]
@@ -647,7 +647,7 @@ export default {
       
       const hours = String(d.getHours()).padStart(2, '0')
       const minutes = String(d.getMinutes()).padStart(2, '0')
-      return `${weekDay}, ${day} ${month} ${year} at ${hours}:${minutes}`
+      return `${weekDay}, ${day} ${month} ${year} la ${hours}:${minutes}`
     }
 
     const formatDateToICal = (date) => {

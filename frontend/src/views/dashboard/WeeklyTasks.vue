@@ -3,8 +3,8 @@
     <!-- Header Section -->
     <div class="header">
       <div class="header-content">
-        <h1>Weekly Task & Event Management</h1>
-        <p>Organize and track your tasks and events throughout the week</p>
+        <h1>Gestionarea Sarcinilor și Evenimentelor Săptămânale</h1>
+        <p>Organizează și urmărește sarcinile și evenimentele tale pe parcursul săptămânii</p>
       </div>
     </div>
 
@@ -12,7 +12,7 @@
     <div v-if="loading" class="state-container loading">
       <div class="state-content">
         <div class="spinner"></div>
-        <p>Loading your items...</p>
+        <p>Se încarcă elementele tale...</p>
       </div>
     </div>
 
@@ -27,7 +27,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          Try again
+          Încearcă din nou
         </button>
       </div>
     </div>
@@ -41,7 +41,7 @@
               <h2>{{ day }}</h2>
               <span class="date">{{ getDayDate(day) }}</span>
             </div>
-            <span class="task-count">{{ items.length }} items</span>
+            <span class="task-count">{{ items.length }} elemente</span>
           </div>
           <draggable
             :list="items"
@@ -78,7 +78,7 @@
     <div v-if="showEditTaskModal" class="modal-overlay">
       <div class="modal">
         <div class="modal-header">
-          <h2>Edit Task</h2>
+          <h2>Editează Sarcina</h2>
           <button @click="closeEditTaskModal" class="btn-icon">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -87,39 +87,39 @@
         </div>
         <form @submit.prevent="saveTask" class="form">
           <div class="form-group">
-            <label>Title</label>
+            <label>Titlu</label>
             <input 
               v-model="taskForm.title"
               type="text"
-              placeholder="Enter task title"
+              placeholder="Introdu titlul sarcinii"
               required>
           </div>
           <div class="form-group">
-            <label>Description</label>
+            <label>Descriere</label>
             <textarea 
               v-model="taskForm.description"
               rows="3"
-              placeholder="Enter task description"></textarea>
+              placeholder="Introdu descrierea sarcinii"></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Due Date</label>
+              <label>Data scadentă</label>
               <input 
                 v-model="taskForm.dueDate"
                 type="date"
                 required>
             </div>
             <div class="form-group">
-              <label>Priority</label>
+              <label>Prioritate</label>
               <select v-model="taskForm.priority" required>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+                <option value="high">Ridicată</option>
+                <option value="medium">Medie</option>
+                <option value="low">Scăzută</option>
               </select>
             </div>
           </div>
           <div class="form-group">
-            <label>Category</label>
+            <label>Categorie</label>
             <select v-model="taskForm.category" required>
               <option v-for="category in categories" :key="category" :value="category">
                 {{ category }}
@@ -128,10 +128,10 @@
           </div>
           <div class="modal-footer">
             <button type="button" @click="closeEditTaskModal" class="btn btn-text">
-              Cancel
+              Anulează
             </button>
             <button type="submit" class="btn btn-primary">
-              Save Changes
+              Salvează Modificările
             </button>
           </div>
         </form>
@@ -142,7 +142,7 @@
     <div v-if="showEditEventModal" class="modal-overlay">
       <div class="modal">
         <div class="modal-header">
-          <h2>Edit Event</h2>
+          <h2>Editează Evenimentul</h2>
           <button @click="closeEditEventModal" class="btn-icon">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -151,30 +151,30 @@
         </div>
         <form @submit.prevent="saveEvent" class="form">
           <div class="form-group">
-            <label>Title</label>
+            <label>Titlu</label>
             <input 
               v-model="eventForm.title"
               type="text"
-              placeholder="Enter event title"
+              placeholder="Introdu titlul evenimentului"
               required>
           </div>
           <div class="form-group">
-            <label>Description</label>
+            <label>Descriere</label>
             <textarea 
               v-model="eventForm.description"
               rows="3"
-              placeholder="Enter event description"></textarea>
+              placeholder="Introdu descrierea evenimentului"></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Start Date & Time</label>
+              <label>Data și Ora de Început</label>
               <input 
                 v-model="eventForm.startDate"
                 type="datetime-local"
                 required>
             </div>
             <div class="form-group">
-              <label>End Date & Time</label>
+              <label>Data și Ora de Sfârșit</label>
               <input 
                 v-model="eventForm.endDate"
                 type="datetime-local"
@@ -182,7 +182,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Category</label>
+            <label>Categorie</label>
             <select v-model="eventForm.category" required>
               <option v-for="category in categories" :key="category" :value="category">
                 {{ category }}
@@ -191,10 +191,10 @@
           </div>
           <div class="modal-footer">
             <button type="button" @click="closeEditEventModal" class="btn btn-text">
-              Cancel
+              Anulează
             </button>
             <button type="submit" class="btn btn-secondary">
-              Save Changes
+              Salvează Modificările
             </button>
           </div>
         </form>
@@ -205,7 +205,7 @@
     <div v-if="showReadModal && selectedItem?.type === 'task'" class="modal-overlay">
       <div class="modal read-modal">
         <div class="modal-header">
-          <h2>Task Details</h2>
+          <h2>Detalii Sarcină</h2>
           <button @click="closeReadModal" class="btn-icon">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -215,31 +215,31 @@
         <div class="read-content">
           <div class="read-section">
             <h3>{{ selectedItem?.title }}</h3>
-            <p class="description">{{ selectedItem?.description || 'No description provided' }}</p>
+            <p class="description">{{ selectedItem?.description || 'Nu există descriere' }}</p>
           </div>
           <div class="read-section">
             <div class="meta-info">
               <div class="meta-item">
                 <span class="label">Status:</span>
-                <span class="value">{{ selectedItem?.completed ? 'Completed' : 'Pending' }}</span>
+                <span class="value">{{ selectedItem?.completed ? 'Finalizată' : 'În așteptare' }}</span>
               </div>
               <div class="meta-item">
-                <span class="label">Due Date:</span>
+                <span class="label">Data scadentă:</span>
                 <span class="value">{{ formatDate(selectedItem?.dueDate) }}</span>
               </div>
               <div class="meta-item">
-                <span class="label">Priority:</span>
+                <span class="label">Prioritate:</span>
                 <span class="value priority-badge" :class="selectedItem?.priority">{{ selectedItem?.priority }}</span>
               </div>
               <div class="meta-item">
-                <span class="label">Category:</span>
+                <span class="label">Categorie:</span>
                 <span class="value category-badge">{{ selectedItem?.category }}</span>
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="closeReadModal" class="btn btn-text">Close</button>
+          <button @click="closeReadModal" class="btn btn-text">Închide</button>
         </div>
       </div>
     </div>
@@ -292,7 +292,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h3>{{ pendingAction === 'delete' ? 'Confirm Delete' : 'Confirm Move' }}</h3>
+          <h3>{{ pendingAction === 'delete' ? 'Confirmare Stergere' : 'Confirmare Modificare' }}</h3>
         </div>
         <p>{{ confirmMessage }}</p>
         <div class="modal-footer">
@@ -448,7 +448,7 @@ export default {
 
 
         // Show confirmation modal
-        confirmMessage.value = `Are you sure you want to move this ${item.type} from ${fromDay} to ${toDay}?`
+        confirmMessage.value = `Ești sigur că vrei să muți acest ${item.type} de la ${fromDay} la ${toDay}?`
         pendingAction.value = 'move'
         pendingTaskId.value = item.id
         itemType.value = item.type
@@ -485,7 +485,7 @@ export default {
       pendingTaskId.value = item.id
       pendingAction.value = 'delete'
       itemType.value = item.type
-      confirmMessage.value = `Are you sure you want to delete this ${item.type}? This action cannot be undone.`
+      confirmMessage.value = `Ești sigur că vrei să ștergi acest ${item.type}? Această acțiune nu poate fi anulată.`
       showConfirmModal.value = true
     }
 

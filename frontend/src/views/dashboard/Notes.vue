@@ -3,7 +3,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state">
       <span class="loading-spinner">⌛</span>
-      <p>Loading notes...</p>
+      <p>Se încarcă notițele...</p>
     </div>
 
     <!-- Error State -->
@@ -11,7 +11,7 @@
       <p>{{ error }}</p>
       <button @click="loadNotes" class="btn-retry">
         <span class="icon">🔄</span>
-        Try again
+        Încearcă din nou
       </button>
     </div>
 
@@ -25,7 +25,7 @@
             <input 
               v-model="searchQuery"
               type="text"
-              placeholder="Search notes..."
+              placeholder="Caută notițe..."
             >
           </div>
           <select v-model="selectedCategory">
@@ -40,7 +40,7 @@
         </div>
         <button @click="showAddNoteModal = true" class="btn-add">
           <span class="icon">➕</span>
-          Add note
+          Adaugă notiță
         </button>
       </div>
 
@@ -52,7 +52,7 @@
             <input 
               v-model="activeNote.title"
               class="note-title"
-              placeholder="Note title"
+              placeholder="Titlul notiței"
               @input="updateNote"
             >
             <div class="editor-actions">
@@ -68,9 +68,9 @@
                 @change="updateNote"
                 class="category-select"
               >
-                <option value="work">Work</option>
+                <option value="work">Muncă</option>
                 <option value="personal">Personal</option>
-                <option value="learning">Learning</option>
+                <option value="learning">Învățare</option>
               </select>
               <button 
                 @click="deleteNote(activeNote.id)"
@@ -83,12 +83,12 @@
           <textarea
             v-model="activeNote.content"
             class="note-content"
-            placeholder="Write your note here..."
+            placeholder="Scrie notița ta aici..."
             @input="updateNote"
           ></textarea>
           <div class="editor-footer">
             <span class="last-updated">
-              Last updated: {{ formatDate(activeNote.updatedAt) }}
+              Ultima actualizare: {{ formatDate(activeNote.updatedAt) }}
             </span>
           </div>
         </div>
@@ -106,7 +106,7 @@
             @click="selectNote(note)"
           >
             <div class="note-card-header">
-              <h3>{{ note.title || 'Note without title' }}</h3>
+              <h3>{{ note.title || 'Notiță fără titlu' }}</h3>
               <span v-if="note.pinned" class="pin-indicator">📌</span>
             </div>
             <p class="note-preview">{{ note.content }}</p>
@@ -126,38 +126,38 @@
     <!-- Add Note Modal -->
     <div v-if="showAddNoteModal" class="modal">
       <div class="modal-content">
-        <h2>Add new note</h2>
+        <h2>Adaugă notiță nouă</h2>
         <form @submit.prevent="createNote">
           <div class="form-group">
-            <label>Title</label>
+            <label>Titlu</label>
             <input v-model="newNote.title" required>
           </div>
           <div class="form-group">
-            <label>Content</label>
+            <label>Conținut</label>
             <textarea v-model="newNote.content" required></textarea>
           </div>
           <div class="form-group">
-            <label>Category</label>
+            <label>Categorie</label>
             <select v-model="newNote.category">
-              <option value="work">Work</option>
+              <option value="work">Muncă</option>
               <option value="personal">Personal</option>
-              <option value="learning">Learning</option>
+              <option value="learning">Învățare</option>
             </select>
           </div>
           <div class="form-group">
             <label class="checkbox-label">
               <input type="checkbox" v-model="newNote.pinned">
-              Pin note
+              Fixează notița
             </label>
           </div>
           <div class="modal-actions">
-            <button type="submit" class="btn-save">Save</button>
+            <button type="submit" class="btn-save">Salvează</button>
             <button 
               type="button"
               @click="showAddNoteModal = false"
               class="btn-cancel"
             >
-              Cancel
+              Anulează
             </button>
           </div>
         </form>
@@ -182,10 +182,10 @@ export default {
     const showAddNoteModal = ref(false)
 
     const categories = [
-      { value: 'all', label: 'All notes' },
-      { value: 'work', label: 'Work' },
+      { value: 'all', label: 'Toate notițele' },
+      { value: 'work', label: 'Muncă' },
       { value: 'personal', label: 'Personal' },
-      { value: 'learning', label: 'Learning' }
+      { value: 'learning', label: 'Învățare' }
     ]
 
     const newNote = ref({
@@ -278,7 +278,7 @@ export default {
     }
 
     const deleteNote = async (id) => {
-      if (!confirm('Are you sure you want to delete this note?')) return
+      if (!confirm('Ești sigur că vrei să ștergi această notiță?')) return
       
       try {
         await store.dispatch('notes/deleteNote', id)

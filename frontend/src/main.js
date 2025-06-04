@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
+import axios from 'axios'
 
 // Import Toast Notification
 import Toast from 'vue-toastification'
@@ -12,6 +13,35 @@ import 'vue-toastification/dist/index.css'
 // Import Firebase
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
+
+// Configure axios
+axios.defaults.baseURL = 'http://localhost:3000'
+
+// Add request interceptor for authentication
+axios.interceptors.request.use(
+  config => {
+    const token = store.getters['auth/token']
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  error => {
+    return Promise.reject(error)
+  }
+)
+
+// Add response interceptor for error handling
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      store.dispatch('auth/logout')
+      router.push('/login')
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Firebase configuration
 const firebaseConfig = {

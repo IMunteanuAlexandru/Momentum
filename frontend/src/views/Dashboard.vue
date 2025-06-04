@@ -9,15 +9,15 @@
       <nav class="sidebar-nav">
         <router-link to="/dashboard/analytics" class="nav-item">
           <span class="nav-icon">📈</span>
-          <span>Analytics</span>
+          <span>Analiză</span>
         </router-link>
         <router-link to="/dashboard/weeklytasks" class="nav-item">
           <span class="nav-icon">📝</span>
-          Weekly To Do
+          Sarcini Săptămânale
         </router-link>
         <router-link to="/dashboard/tasks" class="nav-item">
           <span class="nav-icon">📝</span>
-          Tasks
+          Sarcini
         </router-link>
         <router-link to="/dashboard/calendar" class="nav-item">
           <span class="nav-icon">📅</span>
@@ -25,7 +25,7 @@
         </router-link>
         <router-link to="/dashboard/notes" class="nav-item">
           <span class="nav-icon">📝</span>
-          Notes
+          Note
         </router-link>
         <router-link to="/dashboard/focus" class="nav-item">
           <span class="nav-icon">⏱️</span>
@@ -37,13 +37,13 @@
         </router-link>
         <router-link to="/dashboard/settings" class="nav-item">
           <span class="nav-icon">⚙️</span>
-          <span>Settings</span>
+          <span>Setări</span>
         </router-link>
       </nav>
 
       <div class="sidebar-footer">
         <button @click="handleLogout" class="logout-btn">
-          <span>Logout</span>
+          <span>Deconectare</span>
         </button>
       </div>
     </aside>

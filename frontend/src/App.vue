@@ -4,6 +4,7 @@ import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import Notifications from './components/Notifications.vue'
+import InAppNotification from '@/components/InAppNotification.vue'
 
 const store = useStore()
 const router = useRouter()
@@ -52,11 +53,12 @@ onMounted(async () => {
 
 <template>
   <div :class="[currentTheme]">
+    <InAppNotification />
     <Notifications />
     <main :class="{ 'main-content': !isAuthenticated, 'full-height': isAuthenticated }">
       <router-view v-if="initialized"></router-view>
       <div v-else class="loading">
-        <span>Loading...</span>
+        <span>Se încarcă...</span>
       </div>
     </main>
   </div>

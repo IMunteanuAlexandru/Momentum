@@ -22,23 +22,26 @@ Momentum is a web application designed to help users manage their time effective
 - **Tailwind CSS**: For styling the app.
 - **Chart.js**: For displaying charts and graphs.
 - **Firebase SDK**: For authentication and database integration.
+- **Vite**: For development and build tooling.
 
 ### Backend
 - **Flask**: A lightweight Python framework for the backend API.
 - **Firebase Firestore**: For storing user data and tasks.
+- **Nodemailer**: For sending email notifications.
 
 ### AI Integration
 - **OpenAI API**: For natural language processing and voice assistant functionality.
 - **Web Speech API**: For speech-to-text and text-to-speech features.
 
 ---
+
 ## Getting Started
 
 ### Installation
-
+sleep
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/momentum.git
+   git clone https://github.com/../momentum.git
    cd momentum
    ```
 
@@ -66,15 +69,19 @@ Momentum is a web application designed to help users manage their time effective
 
 ```
 momentum/
-├── frontend/               # Vue.js frontend
-│   ├── src/                # Vue components and logic
-│   └── package.json        # Frontend dependencies
+├── frontend/ # Vue.js frontend
+│ ├── src/ # Vue components and logic
+│ ├── package.json # Frontend dependencies
+│ └── vite.config.js # Vite configuration
 │
-├── backend/                # Flask backend
-│   ├── app.py              # Flask application
-│   └── requirements.txt    # Python dependencies
+├── backend/ # Flask backend
+│ ├── app.py # Flask application
+│ ├── requirements.txt # Python dependencies
+│ ├── routes/ # API routes
+│ ├── services/ # Services for handling business logic
+│ └── seed_events.py # Script for seeding events
 │
-└── README.md               # Project documentation
+└── README.md # Project documentation
 ```
 
 ---

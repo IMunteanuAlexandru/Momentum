@@ -3,7 +3,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state">
       <span class="loading-spinner">⌛</span>
-      <p>Loading calendar...</p>
+      <p>Se încarcă calendarul...</p>
     </div>
 
     <!-- Error State -->
@@ -11,7 +11,7 @@
       <p>{{ error }}</p>
       <button @click="retryLoading" class="btn-retry">
         <span class="icon">🔄</span>
-        Try again
+        Încearcă din nou
       </button>
     </div>
 
@@ -40,7 +40,7 @@
         </div>
         <button @click="showAddEvent = true" class="btn-add">
           <span class="icon">➕</span>
-          Add event
+          Adaugă eveniment
         </button>
       </div>
       
@@ -70,7 +70,7 @@
                 {{ event.title }}
               </div>
               <div v-if="day.events.length > 3" class="more-events" @click.stop="showAllEvents(day)">
-                +{{ day.events.length - 3 }} more
+                +{{ day.events.length - 3 }} mai multe
               </div>
             </div>
           </div>
@@ -141,64 +141,63 @@
       <!-- Add/Edit Event Modal -->
       <div v-if="showAddEvent || editingEvent" class="modal">
         <div class="modal-content">
-          <h2>{{ editingEvent ? 'Edit event' : 'Add new event' }}</h2>
+          <h2>{{ editingEvent ? 'Editează eveniment' : 'Adaugă eveniment nou' }}</h2>
           <form @submit.prevent="saveEvent">
             <div class="form-group">
-              <label>Title</label>
+              <label>Titlu</label>
               <input v-model="eventForm.title" required>
             </div>
             <div class="form-group">
-              <label>Description</label>
+              <label>Descriere</label>
               <textarea v-model="eventForm.description"></textarea>
             </div>
             <div class="form-group">
-              <label>Start date</label>
+              <label>Data început</label>
               <input type="datetime-local" v-model="eventForm.startDate" required>
             </div>
             <div class="form-group">
-              <label>End date</label>
+              <label>Data sfârșit</label>
               <input type="datetime-local" v-model="eventForm.endDate" required>
             </div>
             <div class="form-group">
-              <label>Category</label>
+              <label>Categorie</label>
               <select v-model="eventForm.category" required>
-                <option value="meeting">Meeting</option>
-                <option value="event">Event</option>
+                <option value="meeting">Întâlnire</option>
+                <option value="event">Eveniment</option>
                 <option value="reminder">Reminder</option>
-                <option value="birthday">Birthday</option>
-                <option value="holiday">Holiday</option>
+                <option value="birthday">Zi de naștere</option>
+                <option value="holiday">Sărbătoare</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Recurrence</label>
+              <label>Recurență</label>
               <select v-model="eventForm.recurrence">
-                <option value="">No recurrence</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
+                <option value="">Fără recurență</option>
+                <option value="daily">Zilnic</option>
+                <option value="weekly">Săptămânal</option>
+                <option value="monthly">Lunar</option>
+                <option value="yearly">Anual</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>Notifications</label>
-              <div class="notification-options">
-                <label>
-                  <input 
-                    type="checkbox" 
-                    v-model="eventForm.notifications.email"
-                  > Email
-                </label>
-                <label>
-                  <input 
-                    type="checkbox" 
-                    v-model="eventForm.notifications.push"
-                  > Push
+            <div class="form-group notification-toggle">
+              <label class="notification-label">
+                <span class="notification-icon">🔔</span>
+                Notificări
+              </label>
+              <div class="toggle-switch">
+                <input 
+                  type="checkbox" 
+                  id="notification-toggle"
+                  v-model="eventForm.notifications"
+                >
+                <label for="notification-toggle" class="toggle-label">
+                  <span class="toggle-text">{{ eventForm.notifications ? 'ON' : 'OFF' }}</span>
                 </label>
               </div>
             </div>
             <div class="modal-actions">
               <button type="submit" class="btn-save">
-                {{ editingEvent ? 'Save' : 'Add' }}
+                {{ editingEvent ? 'Salvează' : 'Adaugă' }}
               </button>
               <button 
                 v-if="editingEvent" 
@@ -206,10 +205,10 @@
                 @click="deleteEvent" 
                 class="btn-delete"
               >
-                Delete
+                Șterge
               </button>
               <button type="button" @click="closeEventModal" class="btn-cancel">
-                Cancel
+                Anulează
               </button>
             </div>
           </form>
@@ -245,22 +244,22 @@
 
             <div class="detail-row" v-if="selectedEvent.recurrence">
               <span class="icon">🔄</span>
-              <div class="detail-content">Repeats {{ selectedEvent.recurrence }}</div>
+              <div class="detail-content">Se repetă {{ selectedEvent.recurrence }}</div>
             </div>
 
             <div class="detail-row" v-if="hasNotifications">
               <span class="icon">🔔</span>
               <div class="detail-content">
-                Notifications: 
-                <span v-if="selectedEvent.notifications.email">Email</span>
-                <span v-if="selectedEvent.notifications.push">Push</span>
+                <span class="notification-status" :class="selectedEvent.notifications ? 'enabled' : 'disabled'">
+                  {{ selectedEvent.notifications ? 'Notificări Pornite' : 'Notificări Oprite' }}
+                </span>
               </div>
             </div>
           </div>
 
           <div class="event-actions">
             <button class="btn-edit" @click="startEditing">
-              <span class="icon">✏️</span> Edit Event
+              <span class="icon">✏️</span> Editează Eveniment
             </button>
           </div>
         </div>
@@ -291,7 +290,7 @@ export default {
       { label: 'Day', value: 'day' }
     ]
 
-    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const weekDays = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică']
 
     const eventForm = ref({
       title: '',
@@ -300,15 +299,12 @@ export default {
       endDate: '',
       category: 'meeting',
       recurrence: '',
-      notifications: {
-        email: false,
-        push: false
-      }
+      notifications: false
     })
 
     // Computed properties for calendar data
     const currentMonthYear = computed(() => {
-      return currentDate.value.toLocaleDateString('en-En', { 
+      return currentDate.value.toLocaleDateString('ro-RO', { 
         month: 'long', 
         year: 'numeric' 
       })
@@ -395,7 +391,7 @@ export default {
     }
 
     const formatWeekDay = (date) => {
-      return date.toLocaleDateString('en-En', { weekday: 'short' })
+      return date.toLocaleDateString('ro-RO', { weekday: 'short' })
     }
 
     const formatDayNumber = (date) => {
@@ -404,7 +400,7 @@ export default {
 
     const formatEventTime = (event) => {
       const start = new Date(event.startDate)
-      return start.toLocaleTimeString('en-En', { 
+      return start.toLocaleTimeString('ro-RO', { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
@@ -469,10 +465,7 @@ export default {
         ...selectedEvent.value,
         startDate: selectedEvent.value.startDate.slice(0, 16), // Format for datetime-local input
         endDate: selectedEvent.value.endDate.slice(0, 16),
-        notifications: {
-          email: selectedEvent.value.notifications?.email || false,
-          push: selectedEvent.value.notifications?.push || false
-        }
+        notifications: selectedEvent.value.notifications || false
       }
       showAddEvent.value = true
       closeEventDetails() // Close the details modal before showing edit modal
@@ -480,7 +473,7 @@ export default {
 
     const formatDetailDate = (dateString) => {
       const date = new Date(dateString)
-      return date.toLocaleString('en-US', {
+      return date.toLocaleString('ro-RO', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -495,8 +488,7 @@ export default {
     }
 
     const hasNotifications = computed(() => {
-      if (!selectedEvent.value?.notifications) return false
-      return selectedEvent.value.notifications.email || selectedEvent.value.notifications.push
+      return selectedEvent.value?.notifications || false
     })
 
     const editEvent = (event) => {
@@ -547,7 +539,7 @@ export default {
     }
 
     const deleteEvent = async () => {
-      if (confirm('Are you sure you want to delete this event?')) {
+      if (confirm('Ești sigur că vrei să ștergi acest eveniment?')) {
         try {
           await store.dispatch('calendar/deleteEvent', editingEvent.value.id)
           store.dispatch('notifications/add', {
@@ -575,10 +567,7 @@ export default {
         endDate: '',
         category: 'meeting',
         recurrence: '',
-        notifications: {
-          email: false,
-          push: false
-        }
+        notifications: false
       }
     }
 
@@ -609,7 +598,7 @@ export default {
     const selectedEvent = ref(null)
 
     const formatSelectedDate = computed(() => {
-      return currentDate.value.toLocaleDateString('en-US', {
+      return currentDate.value.toLocaleDateString('ro-RO', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -1328,5 +1317,101 @@ export default {
 
 .btn-edit:hover {
   opacity: 0.9;
+}
+
+.notification-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--background);
+  border-radius: 8px;
+  border: 1px solid var(--secondary);
+}
+
+.notification-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.notification-icon {
+  font-size: 1.2rem;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-label {
+  position: relative;
+  display: inline-block;
+  width: 90px;
+  height: 30px;
+  background-color: var(--secondary);
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-label:before {
+  content: '';
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+input:checked + .toggle-label {
+  background-color: var(--primary);
+}
+
+input:checked + .toggle-label:before {
+  transform: translateX(60px);
+}
+
+.toggle-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* Update the event details notification display */
+.detail-row .notification-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.detail-row .notification-status.enabled {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.detail-row .notification-status.disabled {
+  background-color: rgba(158, 158, 158, 0.1);
+  color: #9e9e9e;
 }
 </style> 

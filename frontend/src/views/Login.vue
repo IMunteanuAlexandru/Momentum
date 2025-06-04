@@ -1,7 +1,7 @@
 <template>
   <div class="auth-container">
     <div class="auth-card">
-      <h2>Login to Momentum</h2>
+      <h2>Autentificare în Momentum</h2>
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="form-group">
           <label for="email">Email</label>
@@ -16,7 +16,7 @@
         </div>
         
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Parolă</label>
           <input
             type="password"
             id="password"
@@ -32,21 +32,21 @@
         </div>
 
         <button type="submit" class="btn-submit" :disabled="loading">
-          {{ loading ? 'Logging in...' : 'Login' }}
+          {{ loading ? 'Se autentifică...' : 'Autentificare' }}
         </button>
 
         <div class="divider">
-          <span>or</span>
+          <span>sau</span>
         </div>
 
         <button type="button" class="btn-google" @click="handleGoogleLogin" :disabled="loading">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" />
-          Continue with Google
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Logo Google" />
+          Continuă cu Google
         </button>
 
         <p class="auth-link">
-          Don't have an account? 
-          <router-link to="/register">Register here</router-link>
+          Nu ai cont? 
+          <router-link to="/register">Înregistrează-te aici</router-link>
         </p>
       </form>
     </div>

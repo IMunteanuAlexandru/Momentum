@@ -48,7 +48,7 @@ export default {
     },
     cancelText: {
       type: String,
-      default: 'Cancel'
+      default: 'Anulează'
     },
     showCancel: {
       type: Boolean,

@@ -1,33 +1,81 @@
 <template>
   <div class="analytics-container">
     <header class="page-header">
-      <h1>Analytics</h1>
+      <h1>Analiză</h1>
       <div class="header-actions">
         <button 
           class="voice-assistant-btn" 
           :class="{ active: voiceAssistant }"
-          @click="toggleVoiceAssistant"
+          @click="showVoiceInstructions"
         >
-          🎤 Voice Assistant
+          🎤 Asistent Vocal
         </button>
         <button class="generate-report-btn" @click="generateReport">
-          Generate Report
+          Generează Raport
         </button>
       </div>
     </header>
+
+    <!-- Initial Voice Assistant Instructions Popup -->
+    <div v-if="showVoiceInstructionsPopup" class="modal-overlay">
+      <div class="modal-content voice-instructions">
+        <h2>Instrucțiuni Asistent Vocal</h2>
+        <div class="instructions-content">
+          <h3>Exemple de comenzi pentru Task-uri:</h3>
+          <ul>
+            <li>"Adaugă task prezentare descrierea pregătire prezentare pentru client data 15 martie 2025 prioritate mare categorie muncă"</li>
+          </ul>
+
+          <h3>Exemple de comenzi pentru Evenimente:</h3>
+          <ul>
+            <li>"Adaugă eveniment prezentare data 25 martie la ora 10 descrierea prezentare proiect nou pentru client categorie meeting"</li>
+          </ul>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-confirm" @click="startVoiceAssistant">Activează Asistentul</button>
+          <button class="btn-cancel" @click="closeVoiceInstructions">Închide</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Voice Assistant Popup -->
+    <div v-if="voiceAssistant" class="modal-overlay">
+      <div class="modal-content voice-instructions">
+        <h2>Asistent Vocal Activ</h2>
+        <div class="instructions-content">
+          <div class="active-indicator">
+            <span class="pulse-dot"></span>
+            <span>Înregistrare activă</span>
+          </div>
+
+          <h3>Exemple de comenzi pentru Task-uri:</h3>
+          <ul>
+            <li>"Adaugă task prezentare descrierea pregătire prezentare pentru client data 15 martie 2025 prioritate mare categorie muncă"</li>
+          </ul>
+
+          <h3>Exemple de comenzi pentru Evenimente:</h3>
+          <ul>
+            <li>"Adaugă eveniment prezentare data 25 martie la ora 10 descrierea prezentare proiect nou pentru client categorie meeting"</li>
+          </ul>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="stopVoiceAssistant">Oprește Asistentul</button>
+        </div>
+      </div>
+    </div>
 
     <div class="analytics-grid">
       <!-- Summary Cards -->
       <div class="summary-cards">
         <div class="stat-card">
           <span class="icon">📊</span>
-          <h3>Total Tasks</h3>
+          <h3>Total Sarcini</h3>
           <div class="stat-value">{{ analyticsData.stats.totalTasks }}</div>
         </div>
 
         <div class="stat-card">
           <span class="icon">✅</span>
-          <h3>Completed Tasks</h3>
+          <h3>Sarcini Finalizate</h3>
           <div class="stat-value">
             {{ analyticsData.stats.completedTasks }}
             <span class="trend up"
@@ -37,7 +85,7 @@
 
         <div class="stat-card">
           <span class="icon">⏰</span>
-          <h3>Pending Tasks</h3>
+          <h3>Sarcini în Așteptare</h3>
           <div class="stat-value">
             {{ analyticsData.stats.pendingTasks }}
             <span class="trend down"
@@ -47,7 +95,7 @@
 
         <div class="stat-card">
           <span class="icon">📈</span>
-          <h3>Productivity Score</h3>
+          <h3>Scor Productivitate</h3>
           <div class="stat-value">
             {{ analyticsData.stats.productivityScore }}%
             <div>
@@ -59,7 +107,7 @@
 
         <div class="stat-card">
           <span class="icon">📅</span>
-          <h3>Current Month Events</h3>
+          <h3>Evenimente Luna Curentă</h3>
           <div class="stat-value">
             {{ analyticsData.stats.monthTotalEvents }}
             <span class="trend up" v-if="analyticsData.stats.monthTotalEvents > 0">⬆️</span>
@@ -68,7 +116,7 @@
 
         <div class="stat-card">
           <span class="icon">✅</span>
-          <h3>Past Events</h3>
+          <h3>Evenimente Trecute</h3>
           <div class="stat-value">
             {{ analyticsData.stats.monthPastEvents }}
             <span class="trend up"
@@ -79,7 +127,7 @@
 
       <!-- Progress Chart -->
       <div class="chart-container">
-        <h2>Task Completion Progress</h2>
+        <h2>Progres Finalizare Sarcini</h2>
         <div class="progress-chart">
           <div v-for="(bar, index) in analyticsData.progressData" :key="index" class="chart-bar-wrapper">
             <div class="chart-bar" :style="{ height: bar.height + '%' }">
@@ -95,7 +143,7 @@
 
       <!-- Recent Activity -->
       <div class="activity-container">
-        <h2>Recent Activity</h2>
+        <h2>Activitate Recentă</h2>
         <div class="activity-list">
           <div v-for="activity in analyticsData.recentActivity" :key="activity.id" class="activity-item">
             <span class="icon">{{ getActivityIcon(activity.type) }}</span>
@@ -207,15 +255,6 @@
               <option value="Yearly">Anual</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input 
-                type="checkbox" 
-                v-model="pendingEvent.notifications.email"
-              >
-              Notificări pe email
-            </label>
-          </div>
         </div>
         <div class="modal-actions">
           <button class="btn-confirm" @click="confirmEvent">Confirmă</button>
@@ -231,7 +270,6 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import { getAuth } from 'firebase/auth'
-import CustomAlert from '@/components/CustomAlert.vue'
 
 const toast = useToast()
 const timeRange = ref('week')
@@ -267,38 +305,8 @@ const pendingEvent = ref({
   startDate: new Date(),
   endDate: new Date(new Date().getTime() + 3600000), // +1 oră
   category: 'Meeting',
-  recurrence: 'No recurrence',
-  notifications: { email: false }
+  recurrence: 'No recurrence'
 })
-
-const formatTaskData = computed(() => {
-  const taskData = {
-    title: pendingTask.value.title,
-    description: pendingTask.value.description,
-    category: pendingTask.value.category,
-    priority: pendingTask.value.priority,
-    dueDate: pendingTask.value.dueDate?.toISOString().split('T')[0],
-    completed: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  return JSON.stringify(taskData, null, 2);
-});
-
-const formatEventData = computed(() => {
-  const eventData = {
-    title: pendingEvent.value.title,
-    description: pendingEvent.value.description,
-    startDate: pendingEvent.value.startDate?.toISOString(),
-    endDate: pendingEvent.value.endDate?.toISOString(),
-    category: pendingEvent.value.category,
-    recurrence: pendingEvent.value.recurrence,
-    notifications: pendingEvent.value.notifications,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  return JSON.stringify(eventData, null, 2);
-});
 
 const taskDueDate = computed({
   get: () => {
@@ -418,43 +426,18 @@ const fetchAnalyticsData = async () => {
       return
     }
 
-    const token = await user.getIdToken()
-
     // Fetch tasks data
-    const tasksResponse = await axios.get('/api/tasks', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const tasksResponse = await axios.get('/api/tasks')
 
     // Fetch events data
-    const eventsResponse = await axios.get('/api/events', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const eventsResponse = await axios.get('/api/events')
 
     if (tasksResponse.data.status === 'success') {
       const tasks = tasksResponse.data.data
       const events = eventsResponse.data.status === 'success' ? eventsResponse.data.data : []
       const now = new Date()
-      let startDate
-
-      // Calculate start date based on selected time range
-      if (timeRange.value === 'week') {
-        startDate = new Date(now)
-        startDate.setDate(now.getDate() - 7)
-      } else if (timeRange.value === 'month') {
-        startDate = new Date(now)
-        startDate.setMonth(now.getMonth() - 1)
-      } else {
-        startDate = new Date(now)
-        startDate.setFullYear(now.getFullYear() - 1)
-      }
-      startDate.setHours(0, 0, 0, 0)  // Set to start of day
 
       // Filter tasks by date range
-      // Check if 'tasks' is a valid array
       if (!Array.isArray(tasks)) {
         console.error("Tasks are not in a valid array format");
         return;
@@ -462,22 +445,17 @@ const fetchAnalyticsData = async () => {
 
       // Filter the tasks based on the 'createdAt' date
       const filteredTasks = tasks.filter(task => {
-        // Check if 'createdAt' exists and is a valid string
         if (!task.createdAt || typeof task.createdAt !== 'string') {
           console.error("Invalid createdAt format:", task.createdAt);
           return false;
         }
 
-        // Convert 'createdAt' to a Date object
         const taskDate = new Date(task.createdAt);
-
-        // Check if the date is valid
         if (isNaN(taskDate)) {
           console.error("Invalid date format:", task.createdAt);
           return false;
         }
 
-        // Filter tasks with 'createdAt' greater than or equal to a specific date
         return taskDate >= new Date("2025-01-01");
       });
 
@@ -486,21 +464,17 @@ const fetchAnalyticsData = async () => {
       const completedTasks = filteredTasks.filter(task => task.completed).length
       const pendingTasks = totalTasks - completedTasks
 
-      // Calculate events statistics for current month
+      // Filter events for current month
       const currentDate = new Date()
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
       const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-      lastDayOfMonth.setHours(23, 59, 59, 999)  // Set to end of the day
+      lastDayOfMonth.setHours(23, 59, 59, 999)
 
       // Filter events for current month
       const currentMonthEvents = events.filter(event => {
         const eventStartDate = new Date(event.startDate)
         const eventEndDate = new Date(event.endDate)
 
-        // Event is in current month if:
-        // 1. Start date is in current month OR
-        // 2. End date is in current month OR
-        // 3. Event spans over current month (starts before and ends after)
         return (
           (eventStartDate >= firstDayOfMonth && eventStartDate <= lastDayOfMonth) ||
           (eventEndDate >= firstDayOfMonth && eventEndDate <= lastDayOfMonth) ||
@@ -601,7 +575,7 @@ const fetchAnalyticsData = async () => {
               description: `${task.completed ? 'Completed' : 'Updated'} task: ${task.title}`,
               time: new Date(task.updatedAt).toISOString()
             })),
-          ...currentMonthEvents.map(event => ({
+          ...pastEvents.map(event => ({
             id: event.id,
             type: 'event',
             description: `${event.title}${event.description ? ` - ${event.description}` : ''}`,
@@ -848,8 +822,7 @@ const processEventCommand = (transcript) => {
       startDate: new Date(),
       endDate: new Date(),
       category: 'Meeting',
-      recurrence: 'No recurrence',
-      notifications: { email: false }
+      recurrence: 'No recurrence'
     };
 
     // Extrage titlul
@@ -860,7 +833,7 @@ const processEventCommand = (transcript) => {
     }
 
     // Extrage descrierea
-    const descRegex = /(?:descriere|descrierea)\s+(.*?)(?:\s+(?:data|dată|pe|categorie|recurență|notificare)|$)/i;
+    const descRegex = /(?:descriere|descrierea)\s+(.*?)(?:\s+(?:data|dată|pe|categorie|recurență)|$)/i;
     const descMatch = transcript.match(descRegex);
     if (descMatch && descMatch[1]) {
       newEvent.description = descMatch[1].trim();
@@ -918,13 +891,6 @@ const processEventCommand = (transcript) => {
       newEvent.recurrence = 'Yearly';
     }
 
-    // Verifică notificările
-    if (transcript.includes('notificare') || transcript.includes('email')) {
-      newEvent.notifications.email = true;
-    }
-
-    
-
     // Actualizăm pendingEvent direct cu valorile noi
     pendingEvent.value = {
       title: newEvent.title,
@@ -932,8 +898,7 @@ const processEventCommand = (transcript) => {
       startDate: newEvent.startDate,
       endDate: newEvent.endDate,
       category: newEvent.category,
-      recurrence: newEvent.recurrence,
-      notifications: { ...newEvent.notifications }
+      recurrence: newEvent.recurrence
     };
 
     // Forțăm actualizarea UI-ului
@@ -985,8 +950,7 @@ const confirmEvent = async () => {
     startDate: new Date(),
     endDate: new Date(new Date().getTime() + 3600000), // +1 oră
     category: 'Meeting',
-    recurrence: 'No recurrence',
-    notifications: { email: false }
+    recurrence: 'No recurrence'
   };
 }
 
@@ -998,8 +962,7 @@ const cancelEvent = () => {
     startDate: new Date(),
     endDate: new Date(new Date().getTime() + 3600000), // +1 oră
     category: 'Meeting',
-    recurrence: 'No recurrence',
-    notifications: { email: false }
+    recurrence: 'No recurrence'
   };
   toast.info('Crearea evenimentului a fost anulată');
 }
@@ -1071,6 +1034,40 @@ const createEvent = async (eventData) => {
   } catch (error) {
     console.error('Eroare la crearea evenimentului:', error);
     toast.error('Eroare la salvarea evenimentului');
+  }
+}
+
+// Add new ref for voice instructions popup
+const showVoiceInstructionsPopup = ref(false)
+
+// Modify the toggleVoiceAssistant function
+const showVoiceInstructions = () => {
+  showVoiceInstructionsPopup.value = true
+}
+
+const closeVoiceInstructions = () => {
+  showVoiceInstructionsPopup.value = false
+}
+
+const stopVoiceAssistant = () => {
+  voiceAssistant.value = false
+  stopVoiceRecognition()
+  localStorage.setItem('voiceAssistant', 'false')
+}
+
+const startVoiceAssistant = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    stream.getTracks().forEach(track => track.stop())
+    
+    voiceAssistant.value = true
+    showVoiceInstructionsPopup.value = false
+    initializeSpeechRecognition()
+    startVoiceRecognition()
+    localStorage.setItem('voiceAssistant', 'true')
+  } catch (error) {
+    console.error('Error requesting microphone permission:', error)
+    toast.error('Microphone access denied')
   }
 }
 
@@ -1498,5 +1495,102 @@ textarea.form-input {
 .btn-confirm:hover,
 .btn-cancel:hover {
   opacity: 0.9;
+}
+
+.voice-instructions {
+  max-width: 600px;
+  background: var(--background);
+  border: 2px solid var(--primary);
+}
+
+.instructions-content {
+  margin: 1rem 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+.instructions-content h3 {
+  color: var(--text);
+  margin: 1rem 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.instructions-content ul {
+  list-style-type: none;
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+}
+
+.instructions-content li {
+  color: var(--text);
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.instructions-content li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--secondary);
+}
+
+.instructions-tips {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--primary);
+  border-radius: 8px;
+}
+
+.instructions-tips h4 {
+  color: var(--text);
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.instructions-tips ul {
+  margin: 0;
+}
+
+.instructions-tips li {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.active-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: var(--primary);
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.pulse-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
 }
 </style>

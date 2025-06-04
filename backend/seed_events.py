@@ -10,94 +10,116 @@ firebase_admin.initialize_app(cred)
 
 db = firestore.client()
 
-# Timezone pentru România
-tz = pytz.timezone('Europe/Bucharest')
-
-# User ID specificat
+# User ID
 USER_ID = "dKOMIQHilZeyMPED7VPvOY5yNuV2"
 
-# Liste pentru generare aleatorie
-titluri_intalniri = [
-    "Ședință de planificare", "Întâlnire cu clientul", "Review sprint", 
-    "Prezentare proiect", "Discuție tehnică", "Workshop echipă",
-    "Interviu candidat", "Training nou", "Retrospectivă"
+# Timezone for Romania
+tz = pytz.timezone('Europe/Bucharest')
+
+# Categories for events
+categories = ["Meeting", "Conference", "Workshop", "Training", "Team Building", "Client Call", "Interview", "Review"]
+
+# Sample event titles
+event_titles = [
+    "Product Demo",
+    "Sprint Planning",
+    "Team Retrospective",
+    "Client Presentation",
+    "Code Review",
+    "Architecture Discussion",
+    "Training Session",
+    "Project Kickoff",
+    "Status Update",
+    "Strategy Meeting",
+    "Design Review",
+    "Performance Review",
+    "Team Building",
+    "Technical Workshop",
+    "Stakeholder Meeting",
+    "Release Planning",
+    "Security Audit",
+    "User Research",
+    "Product Roadmap",
+    "Innovation Workshop"
 ]
 
-titluri_evenimente = [
-    "Conferință IT", "Hackathon", "Team Building", "Lansare produs",
-    "Webinar tech", "Workshop design", "Meetup dezvoltatori"
+# Sample event descriptions
+event_descriptions = [
+    "Strategic planning for Q2 2025",
+    "Review project progress and plan next steps",
+    "Discuss team performance and improvements",
+    "Present new features to stakeholders",
+    "Review code changes and provide feedback",
+    "Discuss system architecture improvements",
+    "Training session on new technologies",
+    "Kickoff meeting for new project phase",
+    "Weekly status update with team",
+    "Strategic planning session",
+    "Review design proposals and provide feedback",
+    "Quarterly performance review meeting",
+    "Team building activities and games",
+    "Technical workshop on best practices",
+    "Meeting with key stakeholders",
+    "Plan next release features and timeline",
+    "Security audit review and findings",
+    "User research findings presentation",
+    "Product roadmap planning session",
+    "Innovation workshop for new ideas"
 ]
 
-titluri_reminder = [
-    "Deadline raport", "Review cod", "Update documentație",
-    "Testare aplicație", "Deploy producție", "Backup date"
-]
-
-locatii = [
-    "Sala Mare", "Sala Conferințe", "Online - Zoom", "Biroul 101",
-    "Hub Innovation", "Sala Training", "Meeting Room 2"
-]
-
-# Generare evenimente
-events = []
-current_date = datetime.now(tz)
-
-for i in range(20):
-    # Calculăm o dată aleatorie în următoarele 30 de zile
-    random_days = random.randint(0, 30)
-    random_hour = random.randint(9, 17)
-    event_date = current_date + timedelta(days=random_days)
-    event_date = event_date.replace(hour=random_hour, minute=0)
+def generate_events():
+    events = []
+    start_date = datetime(2025, 5, 1)
+    end_date = datetime(2025, 8, 1)
     
-    # Alegem tipul de eveniment și detaliile corespunzătoare
-    event_type = random.choice(['meeting', 'event', 'reminder', 'birthday'])
+    for i in range(100):
+        # Generate random dates within the specified range
+        created_date = start_date + timedelta(
+            days=random.randint(0, (end_date - start_date).days)
+        )
+        
+        # Generate random start time between 9 AM and 4 PM
+        start_hour = random.randint(9, 16)
+        start_minute = random.choice([0, 15, 30, 45])
+        
+        # Create start and end times
+        start_time = created_date.replace(
+            hour=start_hour,
+            minute=start_minute,
+            second=0
+        )
+        end_time = start_time + timedelta(hours=random.randint(1, 3))
+        
+        # Localize times
+        start_time = tz.localize(start_time)
+        end_time = tz.localize(end_time)
+        
+        event = {
+            "category": random.choice(categories),
+            "createdAt": start_time,
+            "description": random.choice(event_descriptions),
+            "endDate": end_time,
+            "notifications": True,
+            "recurrence": "",
+            "startDate": start_time,
+            "title": random.choice(event_titles),
+            "updatedAt": start_time,
+            "userId": USER_ID
+        }
+        events.append(event)
     
-    if event_type == 'meeting':
-        title = random.choice(titluri_intalniri)
-        duration = random.choice([1, 1.5, 2])  # ore
-        category = "meeting"
-    elif event_type == 'event':
-        title = random.choice(titluri_evenimente)
-        duration = random.choice([4, 6, 8])  # ore
-        category = "event"
-    elif event_type == 'reminder':
-        title = random.choice(titluri_reminder)
-        duration = 1  # ore
-        category = "reminder"
-    else:
-        title = f"Zi de naștere {random.choice(['Alex', 'Maria', 'Andrei', 'Elena', 'Radu'])}"
-        duration = 24  # ore
-        category = "birthday"
-    
-    end_date = event_date + timedelta(hours=duration)
-    location = random.choice(locatii) if event_type != 'birthday' else ""
-    
-    event = {
-        "title": title,
-        "description": f"Locație: {location}" if location else "Eveniment important",
-        "startDate": event_date.isoformat(),
-        "endDate": end_date.isoformat(),
-        "category": category,
-        "recurrence": "weekly" if random.random() < 0.3 else "",
-        "notifications": {
-            "email": random.choice([True, False]),
-            "push": random.choice([True, False])
-        },
-        "userId": USER_ID,
-        "createdAt": firestore.SERVER_TIMESTAMP,
-        "updatedAt": firestore.SERVER_TIMESTAMP
-    }
-    events.append(event)
+    return events
 
 def seed_events():
-    events_ref = db.collection('events')
+    events = generate_events()
+    batch = db.batch()
     
-    # Adaugă fiecare eveniment în Firestore
     for event in events:
-        event_ref = events_ref.document()
-        event_ref.set(event)
-        print(f"Adăugat eveniment: {event['title']}")
+        doc_ref = db.collection('events').document()
+        batch.set(doc_ref, event)
+    
+    batch.commit()
+    print(f"Successfully seeded {len(events)} events")
 
-if __name__ == '__main__':
-    seed_events()
-    print("Evenimentele au fost adăugate cu succes!") 
+if __name__ == "__main__":
+    seed_events() 

@@ -27,7 +27,7 @@ class NotificationService {
     // Get events and tasks from localStorage
     const events = JSON.parse(localStorage.getItem('events') || '[]');
     const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const emailNotificationsEnabled = localStorage.getItem('emailNotifications') !== 'false';
+    const inAppNotificationsEnabled = localStorage.getItem('inAppNotifications') !== 'false';
     const pushNotificationsEnabled = localStorage.getItem('pushNotifications') !== 'false';
 
     // Check events
@@ -37,13 +37,17 @@ class NotificationService {
 
       // 1 hour notification
       if (timeUntilStart > 0 && timeUntilStart <= 3600000 && !this.hasBeenNotified(event.id, '1h')) {
-        // Send email notification if enabled
-        if (emailNotificationsEnabled && event.notifications?.email) {
-          try {
-            await emailService.sendEventReminder(event);
-          } catch (error) {
-            console.error('Failed to send email notification:', error);
-          }
+        // Send in-app notification if enabled
+        if (inAppNotificationsEnabled && event.notifications?.inApp) {
+          this.showInAppNotification(
+            'Eveniment în curând',
+            {
+              title: event.title,
+              message: `Evenimentul începe în 1 oră`,
+              type: 'event',
+              icon: '📅'
+            }
+          );
         }
 
         // Send push notification if enabled
@@ -64,8 +68,22 @@ class NotificationService {
         }
       }
 
-      // 10 minutes notification - only push notification
+      // 10 minutes notification
       if (timeUntilStart > 0 && timeUntilStart <= 600000 && !this.hasBeenNotified(event.id, '10m')) {
+        // Send in-app notification if enabled
+        if (inAppNotificationsEnabled && event.notifications?.inApp) {
+          this.showInAppNotification(
+            'Eveniment în curând',
+            {
+              title: event.title,
+              message: `Evenimentul începe în 10 minute`,
+              type: 'event',
+              icon: '⏰'
+            }
+          );
+        }
+
+        // Send push notification if enabled
         if (pushNotificationsEnabled && event.notifications?.push &&
             ("Notification" in window) && Notification.permission === 'granted') {
           this.showNotification(
@@ -92,13 +110,17 @@ class NotificationService {
 
         // 1 hour notification
         if (timeUntilDue > 0 && timeUntilDue <= 3600000 && !this.hasBeenNotified(task.id, '1h')) {
-          // Send email notification if enabled
-          if (emailNotificationsEnabled && task.notifications?.email) {
-            try {
-              await emailService.sendTaskReminder(task);
-            } catch (error) {
-              console.error('Failed to send email notification:', error);
-            }
+          // Send in-app notification if enabled
+          if (inAppNotificationsEnabled && task.notifications?.inApp) {
+            this.showInAppNotification(
+              'Task în curând',
+              {
+                title: task.title,
+                message: `Task-ul se termină în 1 oră`,
+                type: 'task',
+                icon: '✓'
+              }
+            );
           }
 
           // Send push notification if enabled
@@ -119,8 +141,22 @@ class NotificationService {
           }
         }
 
-        // 10 minutes notification - only push notification
+        // 10 minutes notification
         if (timeUntilDue > 0 && timeUntilDue <= 600000 && !this.hasBeenNotified(task.id, '10m')) {
+          // Send in-app notification if enabled
+          if (inAppNotificationsEnabled && task.notifications?.inApp) {
+            this.showInAppNotification(
+              'Task în curând',
+              {
+                title: task.title,
+                message: `Task-ul se termină în 10 minute`,
+                type: 'task',
+                icon: '⚡'
+              }
+            );
+          }
+
+          // Send push notification if enabled
           if (pushNotificationsEnabled && task.notifications?.push &&
               ("Notification" in window) && Notification.permission === 'granted') {
             this.showNotification(
@@ -144,6 +180,15 @@ class NotificationService {
   hasBeenNotified(id, timing) {
     const key = `${id}-${timing}`;
     return this.notifiedEvents.has(key);
+  }
+
+  showInAppNotification(title, data) {
+    if (window.notificationCenter) {
+      window.notificationCenter.addNotification({
+        title,
+        ...data
+      });
+    }
   }
 
   showNotification(title, data, id, timing) {

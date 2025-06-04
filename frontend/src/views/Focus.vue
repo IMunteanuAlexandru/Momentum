@@ -7,11 +7,11 @@
                 <div class="timer-controls">
                     <v-btn :color="isRunning ? 'error' : 'success'" @click="toggleTimer" class="control-btn"
                         size="large" :elevation="3">
-                        {{ isRunning ? 'Pause' : 'Start' }}
+                        {{ isRunning ? 'Pauză' : 'Start' }}
                     </v-btn>
                     <v-btn color="primary" @click="resetTimer" class="control-btn" size="large" :elevation="3"
                         :disabled="isRunning">
-                        Reset
+                        Resetare
                     </v-btn>
                 </div>
             </div>
@@ -20,7 +20,7 @@
 
             <div class="settings-grid">
                 <div class="setting-group">
-                    <h3>Focus Time </h3>
+                    <h3>Timp de Focus</h3>
                     <div class="slider-with-presets">
                         <div class="presets">
                             <v-chip v-for="preset in focusPresets" :key="preset"
@@ -41,7 +41,7 @@
                 </div>
 
                 <div class="setting-group">
-                    <h3>Break Time </h3>
+                    <h3>Timp de Pauză</h3>
                     <div class="slider-with-presets">
                         <div class="presets">
                             <v-chip v-for="preset in breakPresets" :key="preset"
@@ -49,7 +49,7 @@
                                 :disabled="isRunning" class="preset-chip" variant="elevated">
                                 {{ preset }} min
                             </v-chip>
-                            <span class="time-label">Break: {{ breakTime }}min</span>
+                            <span class="time-label">Pauză: {{ breakTime }}min</span>
                         </div>
                         <v-slider v-model="breakTime" :min="1" :max="30" :step="1" thumb-label :disabled="isRunning"
                             @update:modelValue="checkTimeRatio" color="info" track-color="info"
@@ -86,7 +86,7 @@
                                 <h3 class="tip-title mb-2">{{ tipData.title }}</h3>
                                 <p class="tip-text">{{ tipData.message }}</p>
                                 <div class="tip-recommendations mt-4" v-if="tipData.recommendations">
-                                    <h4 class="mb-2">Recommendations:</h4>
+                                    <h4 class="mb-2">Recomandări:</h4>
                                     <ul>
                                         <li v-for="(rec, index) in tipData.recommendations" :key="index">
                                             {{ rec }}
@@ -148,7 +148,7 @@ export default {
                 this.pauseTimer()
             } else {
                 if (!this.tipData.isEfficient) {
-                    if (confirm('This time combination is not optimal for productivity. Are you sure you want to continue?')) {
+                    if (confirm('Această combinație de timp nu este optimă pentru productivitate. Ești sigur că vrei să continui?')) {
                         this.startTimer()
                     }
                 } else {
@@ -161,6 +161,10 @@ export default {
                 this.timer = setInterval(() => {
                     if (this.currentTime > 0) {
                         this.currentTime--
+                        if (this.currentTime === 5) {
+                            const audio = new Audio('/notification.mp3')
+                            audio.play()
+                        }
                         if (this.currentTime <= 5 && this.currentTime > 0) {
                             this.playCountdownBeep()
                         }
@@ -194,9 +198,6 @@ export default {
                 this.currentTime = this.focusTime * 60
             }
 
-            const audio = new Audio('/notification.mp3')
-            audio.play()
-
             if (Notification.permission === 'granted') {
                 new Notification(this.isBreak ? 'Break Time!' : 'Focus Time!', {
                     body: this.isBreak ? 'Time for a break!' : 'Time to focus!',
@@ -219,100 +220,100 @@ export default {
             if (focus === 45 && break_ === 15) {
                 this.tipData = {
                     isEfficient: true,
-                    title: 'Optimal Productivity Cycle',
-                    message: 'This combination of 45 minutes of focus and 15 minutes of break is based on scientific research about natural attention and recovery cycles of the brain.',
+                    title: 'Ciclu Optim de Productivitate',
+                    message: 'Această combinație de 45 de minute de focus și 15 minute de pauză se bazează pe cercetări științifice despre ciclurile naturale de atenție și recuperare ale creierului.',
                     recommendations: [
-                        'Use the break for light physical movement',
-                        'Practice eye relaxation exercises (20-20-20 rule)',
-                        'Go outside during the break if possible'
+                        'Folosiți pauza pentru mișcare fizică ușoară',
+                        'Practicați exerciții de relaxare a ochilor (regula 20-20-20)',
+                        'Mergeți afară în timpul pauzei, dacă este posibil'
                     ],
-                    note: 'Studies show that 45 minutes is the optimal period for maintaining intense focus, and 15 minutes of break allows for complete recovery.'
+                    note: 'Studiile arată că 45 de minute este perioada optimă pentru menținerea focusului intens, iar 15 minute de pauză permit recuperarea completă.'
                 }
             } else if (focus === 25 && break_ === 5) {
                 this.tipData = {
                     isEfficient: true,
-                    title: 'Traditional Pomodoro Technique',
-                    message: 'The Pomodoro method, developed by Francesco Cirillo in the 1980s, is scientifically proven to be effective for improving productivity and reducing procrastination.',
+                    title: 'Tehnica Tradițională Pomodoro',
+                    message: 'Metoda Pomodoro, dezvoltată de Francesco Cirillo în anii 1980, este dovedită științific ca fiind eficientă pentru îmbunătățirea productivității și reducerea procrastinării.',
                     recommendations: [
-                        'Use the break for stretching exercises',
-                        'Drink water and avoid electronic devices',
-                        'Note progress after each complete session'
+                        'Folosiți pauza pentru exerciții de întindere',
+                        'Beți apă și evitați dispozitivele electronice',
+                        'Notați progresul după fiecare sesiune completă'
                     ],
-                    note: 'The effectiveness of the Pomodoro method is confirmed by numerous productivity and neuroscience studies.'
+                    note: 'Eficacitatea metodei Pomodoro este confirmată de numeroase studii de productivitate și neuroștiință.'
                 }
             } else if (focus === 90 && break_ === 30) {
                 this.tipData = {
                     isEfficient: true,
-                    title: 'Natural Ultradian Cycle',
-                    message: "This interval follows the body's natural ultradian cycle, which alternates between periods of high performance and the need for recovery every 90-120 minute",
+                    title: 'Ciclu Natural Ultradian',
+                    message: "Acest interval urmează ciclul natural ultradian al corpului, care alternează între perioade de performanță ridicată și nevoia de recuperare la fiecare 90-120 de minute",
                     recommendations: [
-                        'Plan complex tasks for the 90-minute session',
-                        'Include a short walk during the 30-minute break',
-                        'Use the break for a nutritious snack'
+                        'Planificați sarcini complexe pentru sesiunea de 90 de minute',
+                        'Includeți o călătorie scurtă în timpul pauzei de 30 de minute',
+                        'Folosiți pauza pentru o mică gustare nutritivă'
                     ],
-                    note: "Chronobiology research confirms that this cycle aligns with the body's natural rhythms"
+                    note: "Studii de chronobiologie confirmă că acest ciclu se aliniază cu ritmul natural al corpului"
                 }
             } else if (focus >= 60 && break_ <= 5) {
                 this.tipData = {
                     isEfficient: false,
-                    title: 'Risk of Cognitive Burnout',
-                    message: 'Long periods of focus with insufficient breaks can lead to mental exhaustion and decreased cognitive performance.',
+                    title: 'Risc de Exhaustie Cognitivă',
+                    message: 'Perioade lungi de focus cu pauze insuficiente pot duce la epuizarea mentală și scăderea performanței cognitive.',
                     recommendations: [
-                        'Add longer breaks (at least 10-15 minutes)',
-                        'Split the session into smaller intervals',
-                        'Monitor signs of mental fatigue'
+                        'Adăugați pauze mai lungi (cel puțin 10-15 minute)',
+                        'Împărțiți sesiunea în intervale mai mici',
+                        'Monitorizați semnele de oboseală mentală'
                     ],
-                    note: 'Neuroscience studies show that short breaks after prolonged mental effort do not allow for recovery of cognitive resources.'
+                    note: 'Studii neuroștiință arată că pauze scurte după efort mental lung nu permit recuperarea resurselor cognitive.'
                 }
             } else if (focus <= 15) {
                 this.tipData = {
                     isEfficient: false,
-                    title: 'Insufficient Focus Time',
-                    message: 'Research shows that the brain needs 10-15 minutes just to reach an optimal state of focus.',
+                    title: 'Timp de Focus Insuficient',
+                    message: 'Studiile arată că creierul are nevoie de 10-15 minute doar pentru a atinge un stadiu optim de focus.',
                     recommendations: [
-                        'Increase the duration to at least 25 minutes for efficiency',
-                        'Use these intervals only for simple tasks',
-                        'Combine several short intervals into a longer session'
+                        'Măriți durata la cel puțin 25 minute pentru eficiență',
+                        'Folosiți aceste intervale doar pentru sarcini simple',
+                        'Combinați mai multe intervale scurte într-o sesiune mai lungă'
                     ],
-                    note: 'According to neuroplasticity studies, deep focus requires time to develop.'
+                    note: 'Conform studiilor de neuroplasticitate, focusul adânc necesită timp pentru dezvoltare.'
                 }
             } else if (break_ >= 45) {
                 this.tipData = {
                     isEfficient: false,
-                    title: 'Extended Break',
-                    message: 'Excessively long breaks can disrupt the flow state and reduce motivation to resume activity.',
+                    title: 'Pauză Extinsă',
+                    message: 'Pauzele prea lungi pot întrerupe starea de flux și reduce motivația pentru a reveni la activitate.',
                     recommendations: [
-                        'Limit breaks to 15-30 minutes',
-                        'Plan specific activities for the break',
-                        'Set alarms to return to work'
+                        'Restrângeți pauzele la 15-30 minute',
+                        'Planificați activități specifice pentru pauza',
+                        'Stabiliți alarme pentru a reveni la muncă'
                     ],
-                    note: 'Cognitive psychology research indicates that breaks that are too long can disrupt working memory and concentration.'
+                    note: 'Studii de psihologie cognitivă indică că pauzele prea lungi pot întrerupe memoria și concentrarea.'
                 }
             } else {
                 const ratio = focus / break_
                 if (ratio < 3 || ratio > 7) {
                     this.tipData = {
                         isEfficient: false,
-                        title: 'Unbalanced Ratio',
-                        message: `The current ratio of ${ratio.toFixed(1)}:1 between focus and break does not adhere to scientific principles of mental energy management.`,
+                        title: 'Raport Necalitativ',
+                        message: `Raportul curent de ${ratio.toFixed(1)}:1 între focus și pauză nu respectă principii științifice ale gestionării energiei cognitive.`,
                         recommendations: [
-                            'Adjust towards a 4:1 or 5:1 ratio',
-                            'Adapt the break duration to the intensity of mental effort',
-                            'Test different combinations from the provided presets'
+                            'Ajustați în direcția unui raport de 4:1 sau 5:1',
+                            'Adaptăți durata pauzei la intensitatea efortului mental',
+                            'Testați diferite combinații din setările oferite'
                         ],
-                        note: 'Studies in cognitive ergonomics recommend a ratio between 3:1 and 7:1 for optimizing performance.'
+                        note: 'Studii în ergonomie cognitivă recomandă un raport între 3:1 și 7:1 pentru optimizarea performanței.'
                     }
                 } else {
                     this.tipData = {
                         isEfficient: true,
-                        title: 'Personalized Rhythm Adapted',
-                        message: 'You have found a balanced ratio that respects the general principles of cognitive energy management.',
+                        title: 'Ritm Personalizat Adaptat',
+                        message: 'Ați găsit un raport echilibrat care respectă principii generale ale gestionării energiei cognitive.',
                         recommendations: [
-                            'Observe your energy and focus levels',
-                            'Note productivity for different types of tasks',
-                            "Adjust based on your body's feedback"
+                            'Observați nivelurile energiei și focusului',
+                            'Notați productivitatea pentru diferite tipuri de sarcini',
+                            "Ajustați pe baza feedback-ului corpului"
                         ],
-                        note: 'Personalizing intervals within healthy limits can increase individual efficiency, according to productivity studies.'
+                        note: 'Personalizarea intervalelor în limite sănătoase poate crește eficiența individuală, conform studiilor de productivitate.'
                     }
                 }
             }
